@@ -7,6 +7,7 @@ package whisper
 #cgo LDFLAGS: -L${SRCDIR}/../../third_party/lib
 #cgo LDFLAGS: -lwhisper -lggml -lggml-base -lggml-cpu -lggml-vulkan
 #cgo LDFLAGS: -lvulkan-1 -lstdc++ -lm -lpthread -lgomp
+#cgo LDFLAGS: -static-libstdc++ -static-libgcc -static-libgomp
 #include <whisper.h>
 #include <stdlib.h>
 */

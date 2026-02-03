@@ -81,6 +81,11 @@ jobs:
         run: |
           CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
           go build -o "${{ matrix.artifact }}" -ldflags "-X main.version=${VERSION}" ./cmd/sonara
+      - name: Print Windows runtime DLL dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP\msys64\mingw64\bin\objdump.exe" -p "${{ matrix.artifact }}" | Select-String "DLL Name"
       - name: Upload binary to release
         shell: pwsh
         env:
