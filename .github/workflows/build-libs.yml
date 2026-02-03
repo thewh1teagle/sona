@@ -10,16 +10,28 @@ jobs:
   build:
     strategy:
       matrix:
-        # macos-arm64, macos-x86_64, linux-x86_64, linux-arm64
-        runner: [macos-14, macos-13, ubuntu-24.04, ubuntu-24.04-arm]
+        # macos-arm64, macos-x86_64, linux-x86_64, linux-arm64, windows-x86_64
+        runner: [macos-14, macos-13, ubuntu-24.04, ubuntu-24.04-arm, windows-latest]
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Install Vulkan deps
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-vulkan-devel mingw-w64-x86_64-shaderc mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc
+      - name: Install Vulkan deps (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools glslc libshaderc-dev
+      - name: Build and upload (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run scripts/build-libs.py --upload
       - name: Build and upload
+        if: runner.os != 'Windows'
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run scripts/build-libs.py --upload

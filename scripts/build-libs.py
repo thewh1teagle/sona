@@ -1,20 +1,21 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = [
-#     "sh==2.2.2",
-# ]
+# dependencies = []
 # ///
 
 """Build whisper.cpp static libs for the current platform and optionally upload to a GitHub release."""
 
-import argparse, platform, shutil, tarfile
+import argparse, os, platform, shutil, subprocess, tarfile
 from pathlib import Path
-
-import sh
 
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER_REPO = "https://github.com/ggml-org/whisper.cpp.git"
+
+
+def run(*args: str, cwd: str | None = None):
+    print(f"$ {' '.join(args)}")
+    subprocess.run(args, cwd=cwd, check=True)
 
 
 def get_whisper_commit() -> str:
@@ -23,7 +24,7 @@ def get_whisper_commit() -> str:
 
 def platform_id() -> str:
     system = platform.system().lower()  # darwin, linux, windows
-    machine = platform.machine().lower()  # arm64, x86_64
+    machine = platform.machine().lower()  # arm64, x86_64, amd64
     return f"{system}-{machine}"
 
 
@@ -31,11 +32,11 @@ def clone(commit: str, src_dir: Path):
     if src_dir.exists():
         shutil.rmtree(src_dir)
     src_dir.mkdir(parents=True)
-    sh.git.init(_cwd=str(src_dir), _out=print, _err=print)
-    sh.git.remote.add("origin", WHISPER_REPO, _cwd=str(src_dir), _out=print, _err=print)
-    sh.git.fetch("--depth", "1", "origin", commit, _cwd=str(src_dir), _out=print, _err=print)
-    sh.git.checkout("FETCH_HEAD", _cwd=str(src_dir), _out=print, _err=print)
-    sh.git.submodule.update("--init", "--depth", "1", "--recursive", _cwd=str(src_dir), _out=print, _err=print)
+    run("git", "init", cwd=str(src_dir))
+    run("git", "remote", "add", "origin", WHISPER_REPO, cwd=str(src_dir))
+    run("git", "fetch", "--depth", "1", "origin", commit, cwd=str(src_dir))
+    run("git", "checkout", "FETCH_HEAD", cwd=str(src_dir))
+    run("git", "submodule", "update", "--init", "--depth", "1", "--recursive", cwd=str(src_dir))
 
 
 def cmake_flags() -> list[str]:
@@ -48,14 +49,17 @@ def cmake_flags() -> list[str]:
         flags += ["-DGGML_METAL=ON", "-DGGML_METAL_EMBED_LIBRARY=ON"]
     elif system in ("Linux", "Windows"):
         flags += ["-DGGML_VULKAN=ON"]
+    if system == "Windows":
+        flags += ["-G", "MinGW Makefiles"]
     return flags
 
 
 def build(src_dir: Path, build_dir: Path):
     if build_dir.exists():
         shutil.rmtree(build_dir)
-    sh.cmake("-S", str(src_dir), "-B", str(build_dir), *cmake_flags(), _out=print, _err=print)
-    sh.cmake("--build", str(build_dir), "--config", "Release", f"-j{sh.nproc().strip() if platform.system() != 'Darwin' else sh.Command('sysctl')('-n', 'hw.ncpu').strip()}", _out=print, _err=print)
+    run("cmake", "-S", str(src_dir), "-B", str(build_dir), *cmake_flags())
+    jobs = str(os.cpu_count() or 4)
+    run("cmake", "--build", str(build_dir), "--config", "Release", f"-j{jobs}")
 
 
 def lib_paths(build_dir: Path) -> list[Path]:
@@ -94,8 +98,8 @@ def package(build_dir: Path, src_dir: Path, archive: Path):
 
 
 def upload(archive: Path, tag: str):
-    sh.gh.release.create(tag, "--generate-notes", _ok_code=[0, 1], _out=print, _err=print)
-    sh.gh.release.upload(tag, str(archive), "--clobber", _out=print, _err=print)
+    run("gh", "release", "create", tag, "--generate-notes")
+    run("gh", "release", "upload", tag, str(archive), "--clobber")
     print(f"uploaded {archive.name} to release {tag}")
 
 
