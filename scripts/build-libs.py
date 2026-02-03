@@ -18,7 +18,7 @@ WHISPER_REPO = "https://github.com/ggml-org/whisper.cpp.git"
 
 
 def get_whisper_commit() -> str:
-    return (ROOT / ".whisper-commit").read_text().strip()
+    return (ROOT / ".whisper.cpp-commit").read_text().strip()
 
 
 def platform_id() -> str:

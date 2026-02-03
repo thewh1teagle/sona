@@ -17,7 +17,7 @@ GITHUB_REPO = "thewh1teagle/sonara"
 
 
 def get_commit() -> str:
-    return (ROOT / ".whisper-commit").read_text().strip()
+    return (ROOT / ".whisper.cpp-commit").read_text().strip()
 
 
 def platform_id() -> str:

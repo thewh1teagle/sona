@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER_REPO = "ggml-org/whisper.cpp"
-COMMIT = (ROOT / ".whisper-commit").read_text().strip()
+COMMIT = (ROOT / ".whisper.cpp-commit").read_text().strip()
 
 HEADERS = [
     (WHISPER_REPO, "include/whisper.h"),
