@@ -1,0 +1,69 @@
+name: Test Release Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test (for example: v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            artifact: sonara-linux-amd64
+          - runner: ubuntu-24.04-arm
+            artifact: sonara-linux-arm64
+          - runner: macos-14
+            artifact: sonara-darwin-arm64
+          - runner: macos-15-intel
+            artifact: sonara-darwin-amd64
+          - runner: windows-latest
+            artifact: sonara-windows-amd64.exe
+    runs-on: ${{ matrix.runner }}
+    env:
+      TAG: ${{ github.event.inputs.tag }}
+      ARTIFACT: ${{ matrix.artifact }}
+      MODEL_URL: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+      SAMPLE_URL: https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download release binary and test assets (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p models samples
+          wget -O "${ARTIFACT}" "https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARTIFACT}"
+          wget -O models/ggml-tiny.bin "${MODEL_URL}"
+          wget -O samples/jfk.wav "${SAMPLE_URL}"
+          chmod +x "${ARTIFACT}"
+
+      - name: Run binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          "./${ARTIFACT}" models/ggml-tiny.bin samples/jfk.wav
+
+      - name: Download release binary and test assets (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path models | Out-Null
+          New-Item -ItemType Directory -Force -Path samples | Out-Null
+          wget "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -OutFile "$env:ARTIFACT"
+          wget "$env:MODEL_URL" -OutFile "models/ggml-tiny.bin"
+          wget "$env:SAMPLE_URL" -OutFile "samples/jfk.wav"
+
+      - name: Run binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\${{ matrix.artifact }} models\ggml-tiny.bin samples\jfk.wav
