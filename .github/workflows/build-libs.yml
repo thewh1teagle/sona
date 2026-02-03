@@ -7,44 +7,17 @@ permissions:
   contents: write
 
 jobs:
-  macos-arm64:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Build and upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: uv run scripts/build-libs.py --upload
-
-  macos-x86_64:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Build and upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: uv run scripts/build-libs.py --upload
-
-  linux-x86_64:
-    runs-on: ubuntu-24.04
+  build:
+    strategy:
+      matrix:
+        # macos-arm64, macos-x86_64, linux-x86_64, linux-arm64
+        runner: [macos-14, macos-13, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install Vulkan deps
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools glslc libshaderc-dev
-      - name: Build and upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: uv run scripts/build-libs.py --upload
-
-  linux-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Install Vulkan deps
+        if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools glslc libshaderc-dev
       - name: Build and upload
         env:
