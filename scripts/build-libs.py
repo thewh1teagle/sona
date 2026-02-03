@@ -98,7 +98,8 @@ def package(build_dir: Path, src_dir: Path, archive: Path):
 
 
 def upload(archive: Path, tag: str):
-    run("gh", "release", "create", tag, "--generate-notes")
+    # Release may already exist from another matrix job — ignore error
+    subprocess.run(["gh", "release", "create", tag, "--generate-notes"], check=False)
     run("gh", "release", "upload", tag, str(archive), "--clobber")
     print(f"uploaded {archive.name} to release {tag}")
 
