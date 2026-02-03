@@ -36,6 +36,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup MSYS2 wget (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: wget
+
       - name: Download release binary and test assets (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -58,9 +65,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path models | Out-Null
           New-Item -ItemType Directory -Force -Path samples | Out-Null
-          wget "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -OutFile "$env:ARTIFACT"
-          wget "$env:MODEL_URL" -OutFile "models/ggml-tiny.bin"
-          wget "$env:SAMPLE_URL" -OutFile "samples/jfk.wav"
+          C:\msys64\usr\bin\wget.exe "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -O "$env:ARTIFACT"
+          C:\msys64\usr\bin\wget.exe "$env:MODEL_URL" -O "models/ggml-tiny.bin"
+          C:\msys64\usr\bin\wget.exe "$env:SAMPLE_URL" -O "samples/jfk.wav"
 
       - name: Run binary (Windows)
         if: runner.os == 'Windows'
