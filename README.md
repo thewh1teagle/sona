@@ -6,3 +6,7 @@ Like [Ollama](https://github.com/ollama/ollama) but for speech transcription. Po
 
 - Cross-platform binaries: Windows (x86_64), Linux (x86_64/arm64), and macOS (Apple Silicon/Intel).
 - GPU acceleration by platform: Vulkan on Windows/Linux and CoreML/Metal on macOS.
+- OpenAI-compatible REST API server for transcription workflows.
+- CLI for local transcription and serving.
+- Bundled ffmpeg in release archives for convenience.
+- Supports virtually any audio/video input format via automatic ffmpeg conversion.
