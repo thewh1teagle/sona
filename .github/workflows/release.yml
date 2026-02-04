@@ -37,23 +37,28 @@ jobs:
           - runner: ubuntu-24.04
             goos: linux
             goarch: amd64
-            artifact: sonara-linux-amd64
+            binary: sonara-linux-amd64
+            archive: sonara-linux-amd64.tar.gz
           - runner: ubuntu-24.04-arm
             goos: linux
             goarch: arm64
-            artifact: sonara-linux-arm64
+            binary: sonara-linux-arm64
+            archive: sonara-linux-arm64.tar.gz
           - runner: macos-14
             goos: darwin
             goarch: arm64
-            artifact: sonara-darwin-arm64
+            binary: sonara-darwin-arm64
+            archive: sonara-darwin-arm64.tar.gz
           - runner: macos-15-intel
             goos: darwin
             goarch: amd64
-            artifact: sonara-darwin-amd64
+            binary: sonara-darwin-amd64
+            archive: sonara-darwin-amd64.tar.gz
           - runner: windows-latest
             goos: windows
             goarch: amd64
-            artifact: sonara-windows-amd64.exe
+            binary: sonara-windows-amd64.exe
+            archive: sonara-windows-amd64.zip
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -80,14 +85,21 @@ jobs:
         shell: bash
         run: |
           CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-          go build -o "${{ matrix.artifact }}" -ldflags "-X main.version=${VERSION}" ./cmd/sonara
+          go build -o "${{ matrix.binary }}" -ldflags "-X main.version=${VERSION}" ./cmd/sonara
+      - name: Package release bundle with ffmpeg
+        run: |
+          uv run scripts/package-release.py \
+            --binary "${{ matrix.binary }}" \
+            --goos "${{ matrix.goos }}" \
+            --goarch "${{ matrix.goarch }}" \
+            --out "${{ matrix.archive }}"
       - name: Print Windows runtime DLL dependencies
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          & "$env:RUNNER_TEMP\msys64\mingw64\bin\objdump.exe" -p "${{ matrix.artifact }}" | Select-String "DLL Name"
-      - name: Upload binary to release
+          & "$env:RUNNER_TEMP\msys64\mingw64\bin\objdump.exe" -p "${{ matrix.binary }}" | Select-String "DLL Name"
+      - name: Upload packaged archive to release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$env:VERSION" "${{ matrix.artifact }}" --clobber
+        run: gh release upload "$env:VERSION" "${{ matrix.archive }}" --clobber

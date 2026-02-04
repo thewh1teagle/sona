@@ -12,20 +12,27 @@ import (
 	"github.com/thewh1teagle/sonara/internal/wav"
 )
 
-// findFFmpeg looks for ffmpeg next to the current binary first,
-// then falls back to $PATH.
+// findFFmpeg prefers a system ffmpeg from $PATH, then falls back
+// to a bundled ffmpeg next to the current binary.
 func findFFmpeg() (string, error) {
-	if exe, err := os.Executable(); err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "ffmpeg")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
+	path, err := exec.LookPath("ffmpeg")
+	if err == nil {
+		return path, nil
+	}
+
+	if exe, exErr := os.Executable(); exErr == nil {
+		candidates := []string{
+			filepath.Join(filepath.Dir(exe), "ffmpeg"),
+			filepath.Join(filepath.Dir(exe), "ffmpeg.exe"),
+		}
+		for _, candidate := range candidates {
+			if _, statErr := os.Stat(candidate); statErr == nil {
+				return candidate, nil
+			}
 		}
 	}
-	path, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		return "", fmt.Errorf("ffmpeg not found: %w", err)
-	}
-	return path, nil
+
+	return "", fmt.Errorf("ffmpeg not found: %w", err)
 }
 
 // convertWithFFmpeg writes the input to a temp file, runs ffmpeg to convert

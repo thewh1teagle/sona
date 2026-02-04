@@ -17,3 +17,5 @@ whisper-build/
 *.zip
 *.dll
 *.bin
+__pycache__/
+*.pyc

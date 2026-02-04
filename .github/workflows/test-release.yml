@@ -18,19 +18,25 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            artifact: sonara-linux-amd64
+            archive: sonara-linux-amd64.tar.gz
+            binary: sonara
           - runner: ubuntu-24.04-arm
-            artifact: sonara-linux-arm64
+            archive: sonara-linux-arm64.tar.gz
+            binary: sonara
           - runner: macos-14
-            artifact: sonara-darwin-arm64
+            archive: sonara-darwin-arm64.tar.gz
+            binary: sonara
           - runner: macos-15-intel
-            artifact: sonara-darwin-amd64
+            archive: sonara-darwin-amd64.tar.gz
+            binary: sonara
           - runner: windows-latest
-            artifact: sonara-windows-amd64.exe
+            archive: sonara-windows-amd64.zip
+            binary: sonara.exe
     runs-on: ${{ matrix.runner }}
     env:
       TAG: ${{ github.event.inputs.tag }}
-      ARTIFACT: ${{ matrix.artifact }}
+      ARCHIVE: ${{ matrix.archive }}
+      BINARY: ${{ matrix.binary }}
       MODEL_URL: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
       SAMPLE_URL: https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav
     steps:
@@ -43,29 +49,32 @@ jobs:
           msystem: MINGW64
           install: wget
 
-      - name: Download release binary and test assets (Unix)
+      - name: Download release bundle and test assets (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p models samples
-          wget -O "${ARTIFACT}" "https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARTIFACT}"
+          wget -O "${ARCHIVE}" "https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARCHIVE}"
+          tar -xzf "${ARCHIVE}"
           wget -O models/ggml-tiny.bin "${MODEL_URL}"
           wget -O samples/jfk.wav "${SAMPLE_URL}"
-          chmod +x "${ARTIFACT}"
+          chmod +x "${BINARY}"
+          chmod +x ffmpeg || true
 
       - name: Run binary (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          "./${ARTIFACT}" models/ggml-tiny.bin samples/jfk.wav
+          "./${BINARY}" models/ggml-tiny.bin samples/jfk.wav
 
-      - name: Download release binary and test assets (Windows)
+      - name: Download release bundle and test assets (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path models | Out-Null
           New-Item -ItemType Directory -Force -Path samples | Out-Null
-          C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -O "$env:ARTIFACT"
+          C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARCHIVE" -O "$env:ARCHIVE"
+          Expand-Archive -Path "$env:ARCHIVE" -DestinationPath "." -Force
           C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "$env:MODEL_URL" -O "models/ggml-tiny.bin"
           C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "$env:SAMPLE_URL" -O "samples/jfk.wav"
 
@@ -73,4 +82,4 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          .\${{ matrix.artifact }} models\ggml-tiny.bin samples\jfk.wav
+          .\${{ matrix.binary }} models\ggml-tiny.bin samples\jfk.wav
