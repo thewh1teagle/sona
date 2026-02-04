@@ -5,7 +5,7 @@
 # ]
 # ///
 
-"""Package a Sonara release archive with a bundled ffmpeg binary."""
+"""Package a Sona release archive with a bundled ffmpeg binary."""
 
 import argparse
 import shutil
@@ -52,11 +52,11 @@ def package(binary_path: Path, out_path: Path, goos: str, goarch: str):
     if not binary_path.exists():
         raise FileNotFoundError(binary_path)
 
-    with tempfile.TemporaryDirectory(prefix="sonara-package-") as td:
+    with tempfile.TemporaryDirectory(prefix="sona-package-") as td:
         stage_dir = Path(td) / "bundle"
         stage_dir.mkdir(parents=True, exist_ok=True)
 
-        binary_name = "sonara.exe" if goos == "windows" else "sonara"
+        binary_name = "sona.exe" if goos == "windows" else "sona"
         target_binary = stage_dir / binary_name
         shutil.copy2(binary_path, target_binary)
         target_binary.chmod(0o755)
@@ -77,8 +77,8 @@ def package(binary_path: Path, out_path: Path, goos: str, goarch: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Package Sonara release archive")
-    parser.add_argument("--binary", required=True, help="Built sonara binary path")
+    parser = argparse.ArgumentParser(description="Package Sona release archive")
+    parser.add_argument("--binary", required=True, help="Built sona binary path")
     parser.add_argument("--goos", required=True, choices=["linux", "darwin", "windows"])
     parser.add_argument("--goarch", required=True, choices=["amd64", "arm64"])
     parser.add_argument("--out", required=True, help="Output archive path (.tar.gz or .zip)")

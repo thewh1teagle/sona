@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/thewh1teagle/sonara/internal/audio"
-	"github.com/thewh1teagle/sonara/internal/server"
-	"github.com/thewh1teagle/sonara/internal/whisper"
+	"github.com/thewh1teagle/sona/internal/audio"
+	"github.com/thewh1teagle/sona/internal/server"
+	"github.com/thewh1teagle/sona/internal/whisper"
 )
 
 type app struct {
@@ -16,7 +16,7 @@ type app struct {
 func newRootCommand() *cobra.Command {
 	a := &app{}
 	rootCmd := &cobra.Command{
-		Use:     "sonara",
+		Use:     "sona",
 		Short:   "Speech-to-text powered by whisper.cpp",
 		Version: version,
 	}

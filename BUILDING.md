@@ -1,4 +1,4 @@
-# Building Sonara
+# Building Sona
 
 ## Architecture
 
@@ -22,7 +22,7 @@ This separation means contributors never need to build whisper.cpp locally -- th
 ```bash
 uv run scripts/fetch-headers.py
 uv run scripts/download-libs.py
-go build -o sonara ./cmd/sonara/
+go build -o sona ./cmd/sona/
 ```
 
 On Windows, build with cgo enabled and MinGW available (MSYS2 `MINGW64` shell is the easiest way):
@@ -31,7 +31,7 @@ On Windows, build with cgo enabled and MinGW available (MSYS2 `MINGW64` shell is
 C:\msys64\msys2_shell.cmd -mingw64 -defterm -no-start -here -use-full-path
 pacman -Sy --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-vulkan-devel mingw-w64-x86_64-cmake mingw-w64-x86_64-shaderc
 export CGO_ENABLED=1
-go build -o sonara.exe ./cmd/sonara/
+go build -o sona.exe ./cmd/sona/
 ```
 
 ## Bumping whisper.cpp
@@ -42,7 +42,7 @@ go build -o sonara.exe ./cmd/sonara/
 
 ## Releasing binaries
 
-`Release Sonara` workflow builds and uploads `cmd/sonara` binaries for:
+`Release Sona` workflow builds and uploads `cmd/sona` binaries for:
 - Linux: `amd64`, `arm64`
 - macOS: Apple Silicon and Intel
 - Windows: `amd64`

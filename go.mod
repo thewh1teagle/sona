@@ -1,4 +1,4 @@
-module github.com/thewh1teagle/sonara
+module github.com/thewh1teagle/sona
 
 go 1.25.2
 

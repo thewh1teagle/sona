@@ -2,7 +2,7 @@
 
 ## Goal
 
-Ship `sonara.exe` standalone — no MinGW DLLs on PATH, only system `vulkan-1.dll` (from GPU driver).
+Ship `sona.exe` standalone — no MinGW DLLs on PATH, only system `vulkan-1.dll` (from GPU driver).
 
 ## Tricks found
 
@@ -21,7 +21,7 @@ This statically links stdc++, gomp, and winpthread while keeping other libs dyna
 cgo's flag security check rejects `-shared-libgcc` in `#cgo LDFLAGS`. Pass it via Go linker flags instead:
 
 ```bash
-go build -ldflags '-extldflags "-shared-libgcc"' -o sonara.exe ./cmd/sonara/
+go build -ldflags '-extldflags "-shared-libgcc"' -o sona.exe ./cmd/sona/
 ```
 
 ### 3. `-lpthread` vs `-lwinpthread`
@@ -46,7 +46,7 @@ The `-static-libstdc++` gcc driver flag is accepted by cgo LDFLAGS but may not b
 
 Build command:
 ```bash
-CGO_ENABLED=1 go build -ldflags '-extldflags "-shared-libgcc"' -o sonara.exe ./cmd/sonara/
+CGO_ENABLED=1 go build -ldflags '-extldflags "-shared-libgcc"' -o sona.exe ./cmd/sona/
 ```
 
 ## Runtime dependencies

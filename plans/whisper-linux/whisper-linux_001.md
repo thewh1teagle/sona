@@ -1,7 +1,7 @@
 # whisper.cpp Linux + Vulkan Integration
 
 ## Goal
-Add Linux support to sonara using whisper.cpp with Vulkan GPU acceleration.
+Add Linux support to sona using whisper.cpp with Vulkan GPU acceleration.
 
 ## Setup
 
@@ -26,7 +26,7 @@ cmake --build whisper.cpp/build -j$(nproc)
 - [x] Cloned whisper.cpp (shallow + recursive)
 - [x] Install Vulkan deps
 - [x] Build with Vulkan (aarch64, CPU + Vulkan backends)
-- [x] Integrate into sonara (Go CGo bindings compile)
+- [x] Integrate into sona (Go CGo bindings compile)
 - [x] Test inference — Vulkan on NVIDIA GB10, jfk.wav transcribed correctly
 
 ## Build Details

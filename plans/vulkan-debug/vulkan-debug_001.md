@@ -2,7 +2,7 @@
 
 ## Problem
 
-`sonara.exe` segfaults (`PC=0x0`) during `whisper_full` when using the Vulkan backend on Windows (MSYS2/MinGW).
+`sona.exe` segfaults (`PC=0x0`) during `whisper_full` when using the Vulkan backend on Windows (MSYS2/MinGW).
 
 ## Root cause
 
@@ -13,7 +13,7 @@ Without proper SEH unwinding, a function pointer in the Vulkan dispatch path res
 ## How we found it
 
 1. Built whisper.cpp locally — `whisper-cli` works perfectly with Vulkan
-2. Wrote `test_whisper.c` (same calls as sonara) — crashes with `gcc`, works with `c++`
+2. Wrote `test_whisper.c` (same calls as sona) — crashes with `gcc`, works with `c++`
 3. Diffed verbose link output (`gcc -v` vs `c++ -v`):
    - `c++` implicitly links `-lgcc_s` (shared libgcc with SEH)
    - `gcc` implicitly links `-lgcc_eh` (static exception handling)

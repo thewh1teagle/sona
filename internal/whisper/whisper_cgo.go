@@ -7,20 +7,20 @@ package whisper
 #include <stdlib.h>
 #include <stdio.h>
 
-static int sonara_whisper_verbose = 0;
+static int sona_whisper_verbose = 0;
 
-static void sonara_whisper_log_callback(enum ggml_log_level level, const char * text, void * user_data) {
+static void sona_whisper_log_callback(enum ggml_log_level level, const char * text, void * user_data) {
     (void) level;
     (void) user_data;
-    if (!sonara_whisper_verbose) {
+    if (!sona_whisper_verbose) {
         return;
     }
     fputs(text, stderr);
 }
 
-static void sonara_whisper_set_verbose(int verbose) {
-    sonara_whisper_verbose = verbose;
-    whisper_log_set(sonara_whisper_log_callback, NULL);
+static void sona_whisper_set_verbose(int verbose) {
+    sona_whisper_verbose = verbose;
+    whisper_log_set(sona_whisper_log_callback, NULL);
 }
 */
 import "C"
@@ -37,10 +37,10 @@ type Context struct {
 
 func SetVerbose(v bool) {
 	if v {
-		C.sonara_whisper_set_verbose(1)
+		C.sona_whisper_set_verbose(1)
 		return
 	}
-	C.sonara_whisper_set_verbose(0)
+	C.sona_whisper_set_verbose(0)
 }
 
 func New(modelPath string) (*Context, error) {

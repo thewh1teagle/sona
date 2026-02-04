@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/thewh1teagle/sonara/internal/wav"
+	"github.com/thewh1teagle/sona/internal/wav"
 )
 
 var verbose bool
@@ -44,7 +44,7 @@ func findFFmpeg() (string, error) {
 // convertWithFFmpeg writes the input to a temp file, runs ffmpeg to convert
 // it to 16kHz mono s16le PCM via pipe output, and returns float32 samples.
 func convertWithFFmpeg(r io.Reader, ffmpegPath string) ([]float32, error) {
-	tmp, err := os.CreateTemp("", "sonara-*.audio")
+	tmp, err := os.CreateTemp("", "sona-*.audio")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}

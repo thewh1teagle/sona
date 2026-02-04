@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thewh1teagle/sonara/internal/audio"
-	"github.com/thewh1teagle/sonara/internal/whisper"
+	"github.com/thewh1teagle/sona/internal/audio"
+	"github.com/thewh1teagle/sona/internal/whisper"
 )
 
 const maxUploadSize = 25 << 20 // 25 MB

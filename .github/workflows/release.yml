@@ -1,4 +1,4 @@
-name: Release Sonara
+name: Release Sona
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          name: Sonara ${{ env.VERSION }}
+          name: Sona ${{ env.VERSION }}
           generate_release_notes: true
 
   build-and-upload:
@@ -37,28 +37,28 @@ jobs:
           - runner: ubuntu-24.04
             goos: linux
             goarch: amd64
-            binary: sonara-linux-amd64
-            archive: sonara-linux-amd64-with-ffmpeg.tar.gz
+            binary: sona-linux-amd64
+            archive: sona-linux-amd64-with-ffmpeg.tar.gz
           - runner: ubuntu-24.04-arm
             goos: linux
             goarch: arm64
-            binary: sonara-linux-arm64
-            archive: sonara-linux-arm64-with-ffmpeg.tar.gz
+            binary: sona-linux-arm64
+            archive: sona-linux-arm64-with-ffmpeg.tar.gz
           - runner: macos-14
             goos: darwin
             goarch: arm64
-            binary: sonara-darwin-arm64
-            archive: sonara-darwin-arm64-with-ffmpeg.tar.gz
+            binary: sona-darwin-arm64
+            archive: sona-darwin-arm64-with-ffmpeg.tar.gz
           - runner: macos-15-intel
             goos: darwin
             goarch: amd64
-            binary: sonara-darwin-amd64
-            archive: sonara-darwin-amd64-with-ffmpeg.tar.gz
+            binary: sona-darwin-amd64
+            archive: sona-darwin-amd64-with-ffmpeg.tar.gz
           - runner: windows-latest
             goos: windows
             goarch: amd64
-            binary: sonara-windows-amd64.exe
-            archive: sonara-windows-amd64-with-ffmpeg.zip
+            binary: sona-windows-amd64.exe
+            archive: sona-windows-amd64-with-ffmpeg.zip
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -81,11 +81,11 @@ jobs:
         run: echo "$env:RUNNER_TEMP\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Download prebuilt whisper.cpp libs
         run: uv run scripts/download-libs.py
-      - name: Build sonara
+      - name: Build sona
         shell: bash
         run: |
           CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-          go build -o "${{ matrix.binary }}" -ldflags "-X main.version=${VERSION}" ./cmd/sonara
+          go build -o "${{ matrix.binary }}" -ldflags "-X main.version=${VERSION}" ./cmd/sona
       - name: Package release bundle with ffmpeg
         shell: bash
         run: |

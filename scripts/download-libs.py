@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
-GITHUB_REPO = "thewh1teagle/sonara"
+GITHUB_REPO = "thewh1teagle/sona"
 
 
 def get_commit() -> str:

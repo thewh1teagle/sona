@@ -18,20 +18,20 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            archive: sonara-linux-amd64-with-ffmpeg.tar.gz
-            binary: sonara
+            archive: sona-linux-amd64-with-ffmpeg.tar.gz
+            binary: sona
           - runner: ubuntu-24.04-arm
-            archive: sonara-linux-arm64-with-ffmpeg.tar.gz
-            binary: sonara
+            archive: sona-linux-arm64-with-ffmpeg.tar.gz
+            binary: sona
           - runner: macos-14
-            archive: sonara-darwin-arm64-with-ffmpeg.tar.gz
-            binary: sonara
+            archive: sona-darwin-arm64-with-ffmpeg.tar.gz
+            binary: sona
           - runner: macos-15-intel
-            archive: sonara-darwin-amd64-with-ffmpeg.tar.gz
-            binary: sonara
+            archive: sona-darwin-amd64-with-ffmpeg.tar.gz
+            binary: sona
           - runner: windows-latest
-            archive: sonara-windows-amd64-with-ffmpeg.zip
-            binary: sonara.exe
+            archive: sona-windows-amd64-with-ffmpeg.zip
+            binary: sona.exe
     runs-on: ${{ matrix.runner }}
     env:
       TAG: ${{ github.event.inputs.tag }}

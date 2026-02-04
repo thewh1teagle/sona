@@ -1,4 +1,4 @@
-# Sonara — Cross-Platform Whisper.cpp Linking Plan
+# Sona — Cross-Platform Whisper.cpp Linking Plan
 
 ## Goal
 
@@ -19,8 +19,8 @@ The Vulkan loader (`libvulkan.so` / `vulkan-1.dll`) dispatches to vendor ICDs (I
 ## Project Structure
 
 ```
-sonara/
-├── cmd/sonara/
+sona/
+├── cmd/sona/
 │   └── main.go                  # entry point
 ├── internal/
 │   ├── whisper/
@@ -165,10 +165,10 @@ Detects OS/arch, downloads the matching archive from the latest GH release, extr
 ./scripts/download-libs.sh
 
 # 2. Build
-go build -o sonara ./cmd/sonara/
+go build -o sona ./cmd/sona/
 
 # 3. Run (Linux/Windows users need libvulkan installed)
-./sonara transcribe audio.wav
+./sona transcribe audio.wav
 ```
 
 ## Runtime Dependencies
@@ -181,9 +181,9 @@ go build -o sonara ./cmd/sonara/
 
 ## First Steps (ordered)
 
-1. `go mod init github.com/<owner>/sonara`
+1. `go mod init github.com/<owner>/sona`
 2. Scaffold `internal/whisper/` with the three platform-specific CGo files + common API
 3. Write `scripts/download-libs.sh`
 4. Write GitHub Actions workflow to build whisper.cpp libs for all 3 platforms
-5. `cmd/sonara/main.go` — accept a WAV file, resample, transcribe via `internal/whisper`
+5. `cmd/sona/main.go` — accept a WAV file, resample, transcribe via `internal/whisper`
 6. Add HTTP server layer later

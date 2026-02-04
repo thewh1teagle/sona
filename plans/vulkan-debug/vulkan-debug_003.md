@@ -2,7 +2,7 @@
 
 ## Problem
 
-`sonara.exe` segfaults (`PC=0x0`, null function pointer) during `whisper_full` when using the Vulkan backend on an AMD Radeon iGPU in MSYS2.
+`sona.exe` segfaults (`PC=0x0`, null function pointer) during `whisper_full` when using the Vulkan backend on an AMD Radeon iGPU in MSYS2.
 
 ## Environment
 
@@ -20,7 +20,7 @@ Without proper SEH unwinding, a function pointer in the Vulkan dispatch path res
 ### How we found it
 
 1. Built whisper.cpp locally from source — `whisper-cli` works perfectly with Vulkan.
-2. Wrote `test_whisper.c` (minimal C program doing the same as sonara) — crashes.
+2. Wrote `test_whisper.c` (minimal C program doing the same as sona) — crashes.
 3. Compared the cmake link command for whisper-cli vs our gcc command.
 4. Discovered `c++` linker works, `gcc` linker crashes, with identical flags and libs.
 5. Diffed the verbose link output (`-v`):
@@ -49,7 +49,7 @@ In `internal/whisper/whisper_windows.go`, changed:
 +#cgo LDFLAGS: -static-libstdc++
 ```
 
-Sonara now transcribes successfully with Vulkan on the AMD iGPU.
+Sona now transcribes successfully with Vulkan on the AMD iGPU.
 
 ## Current runtime DLL dependencies (non-system)
 
@@ -62,7 +62,7 @@ libstdc++-6.dll     → /mingw64/bin/  (C++ runtime — should be static but sti
 
 ## Next: standalone binary (no MinGW deps)
 
-Goal: `sonara.exe` should work in cmd.exe/PowerShell with only the system `vulkan-1.dll` (shipped with GPU drivers) as an external dependency.
+Goal: `sona.exe` should work in cmd.exe/PowerShell with only the system `vulkan-1.dll` (shipped with GPU drivers) as an external dependency.
 
 Static lib versions exist in MSYS2 for gomp, winpthread, and stdc++:
 - `/mingw64/lib/libgomp.a` (static)
@@ -71,7 +71,7 @@ Static lib versions exist in MSYS2 for gomp, winpthread, and stdc++:
 
 The constraint: `libgcc_s_seh-1.dll` **cannot** be statically linked — that's the whole point of the fix. Options:
 
-1. **Ship `libgcc_s_seh-1.dll` alongside sonara.exe** — simplest, ~100KB DLL, copy it next to the binary in CI. Statically link everything else with `-Wl,-Bstatic -lgomp -lwinpthread -Wl,-Bdynamic`.
+1. **Ship `libgcc_s_seh-1.dll` alongside sona.exe** — simplest, ~100KB DLL, copy it next to the binary in CI. Statically link everything else with `-Wl,-Bstatic -lgomp -lwinpthread -Wl,-Bdynamic`.
 
 2. **Investigate if libgcc_s can be statically linked differently** — unlikely, since the SEH unwinding tables need to be shared across all DLLs in the process.
 
