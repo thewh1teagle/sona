@@ -14,3 +14,5 @@ whisper-src/
 whisper-build/
 *.tar.gz
 *.exe
+*.zip
+*.dll
