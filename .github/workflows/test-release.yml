@@ -65,9 +65,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path models | Out-Null
           New-Item -ItemType Directory -Force -Path samples | Out-Null
-          C:\msys64\usr\bin\wget.exe "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -O "$env:ARTIFACT"
-          C:\msys64\usr\bin\wget.exe "$env:MODEL_URL" -O "models/ggml-tiny.bin"
-          C:\msys64\usr\bin\wget.exe "$env:SAMPLE_URL" -O "samples/jfk.wav"
+          C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "https://github.com/${{ github.repository }}/releases/download/$env:TAG/$env:ARTIFACT" -O "$env:ARTIFACT"
+          C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "$env:MODEL_URL" -O "models/ggml-tiny.bin"
+          C:\msys64\usr\bin\wget.exe --progress=bar:force:noscroll "$env:SAMPLE_URL" -O "samples/jfk.wav"
 
       - name: Run binary (Windows)
         if: runner.os == 'Windows'
