@@ -36,7 +36,16 @@ def clone(commit: str, src_dir: Path):
     run("git", "remote", "add", "origin", WHISPER_REPO, cwd=str(src_dir))
     run("git", "fetch", "--depth", "1", "origin", commit, cwd=str(src_dir))
     run("git", "checkout", "FETCH_HEAD", cwd=str(src_dir))
-    run("git", "submodule", "update", "--init", "--depth", "1", "--recursive", cwd=str(src_dir))
+    run(
+        "git",
+        "submodule",
+        "update",
+        "--init",
+        "--depth",
+        "1",
+        "--recursive",
+        cwd=str(src_dir),
+    )
 
 
 def cmake_flags() -> list[str]:
@@ -107,11 +116,14 @@ def package(build_dir: Path, src_dir: Path, archive: Path):
 
 def upload(archive: Path, tag: str):
     import time
+
     # Release may already exist from another matrix job — ignore error
     subprocess.run(["gh", "release", "create", tag, "--generate-notes"], check=False)
     # Retry upload — release may take a moment to become available
     for attempt in range(5):
-        result = subprocess.run(["gh", "release", "upload", tag, str(archive), "--clobber"])
+        result = subprocess.run(
+            ["gh", "release", "upload", tag, str(archive), "--clobber"]
+        )
         if result.returncode == 0:
             break
         print(f"upload attempt {attempt + 1} failed, retrying...")
@@ -123,7 +135,11 @@ def upload(archive: Path, tag: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Build whisper.cpp static libs")
-    parser.add_argument("--upload", action="store_true", help="Upload to GitHub release (tag derived from commit)")
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload to GitHub release (tag derived from commit)",
+    )
     args = parser.parse_args()
 
     commit = get_whisper_commit()

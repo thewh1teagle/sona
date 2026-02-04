@@ -28,11 +28,12 @@ now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 for repo, path in HEADERS:
     name = Path(path).name
-    content = httpx.get(f"https://raw.githubusercontent.com/{repo}/{COMMIT}/{path}").text
+    content = httpx.get(
+        f"https://raw.githubusercontent.com/{repo}/{COMMIT}/{path}"
+    ).text
     (out_dir / name).write_text(
         f"// Fetched: {now}\n"
         f"// Source: https://github.com/{repo}/blob/{COMMIT}/{path}\n"
-        f"// Commit: {COMMIT}\n\n"
-        + content
+        f"// Commit: {COMMIT}\n\n" + content
     )
     print(f"wrote {name} (commit {COMMIT})")

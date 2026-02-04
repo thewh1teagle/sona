@@ -18,11 +18,26 @@ import httpx
 
 
 FFMPEG_URLS = {
-    ("darwin", "amd64"): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64",
-    ("darwin", "arm64"): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64",
-    ("linux", "amd64"): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64",
-    ("linux", "arm64"): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-arm64",
-    ("windows", "amd64"): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64",
+    (
+        "darwin",
+        "amd64",
+    ): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64",
+    (
+        "darwin",
+        "arm64",
+    ): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64",
+    (
+        "linux",
+        "amd64",
+    ): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64",
+    (
+        "linux",
+        "arm64",
+    ): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-arm64",
+    (
+        "windows",
+        "amd64",
+    ): "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64",
 }
 
 
@@ -81,7 +96,9 @@ def main():
     parser.add_argument("--binary", required=True, help="Built sona binary path")
     parser.add_argument("--goos", required=True, choices=["linux", "darwin", "windows"])
     parser.add_argument("--goarch", required=True, choices=["amd64", "arm64"])
-    parser.add_argument("--out", required=True, help="Output archive path (.tar.gz or .zip)")
+    parser.add_argument(
+        "--out", required=True, help="Output archive path (.tar.gz or .zip)"
+    )
     args = parser.parse_args()
 
     package(Path(args.binary), Path(args.out), args.goos, args.goarch)
