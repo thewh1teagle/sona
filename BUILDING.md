@@ -29,7 +29,7 @@ On Windows, build with cgo enabled and MinGW available (MSYS2 `MINGW64` shell is
 
 ```bash
 C:\msys64\msys2_shell.cmd -mingw64 -defterm -no-start -here -use-full-path
-pacman -Sy --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-vulkan-devel mingw-w64-x86_64-cmake
+pacman -Sy --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-vulkan-devel mingw-w64-x86_64-cmake mingw-w64-x86_64-shaderc
 export CGO_ENABLED=1
 go build -o sonara.exe ./cmd/sonara/
 ```
