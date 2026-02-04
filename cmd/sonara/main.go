@@ -19,6 +19,10 @@ func main() {
 		Version: version,
 	}
 
+	var language, prompt string
+	var translate bool
+	var threads int
+
 	transcribeCmd := &cobra.Command{
 		Use:   "transcribe <model.bin> <audio.wav>",
 		Short: "Transcribe an audio file",
@@ -38,7 +42,13 @@ func main() {
 			}
 			defer ctx.Close()
 
-			text, err := ctx.Transcribe(samples)
+			opts := whisper.TranscribeOptions{
+				Language:  language,
+				Translate: translate,
+				Threads:   threads,
+				Prompt:    prompt,
+			}
+			text, err := ctx.Transcribe(samples, opts)
 			if err != nil {
 				return fmt.Errorf("error transcribing: %w", err)
 			}
@@ -46,6 +56,10 @@ func main() {
 			return nil
 		},
 	}
+	transcribeCmd.Flags().StringVarP(&language, "language", "l", "", "language code (e.g. en, he, auto)")
+	transcribeCmd.Flags().BoolVar(&translate, "translate", false, "translate to English")
+	transcribeCmd.Flags().IntVar(&threads, "threads", 0, "CPU threads (0 = default)")
+	transcribeCmd.Flags().StringVar(&prompt, "prompt", "", "initial prompt / vocabulary hint")
 
 	var port int
 	serveCmd := &cobra.Command{

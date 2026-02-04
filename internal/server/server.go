@@ -51,8 +51,13 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	opts := whisper.TranscribeOptions{
+		Language: r.FormValue("language"),
+		Prompt:   r.FormValue("prompt"),
+	}
+
 	s.mu.Lock()
-	text, err := s.ctx.Transcribe(samples)
+	text, err := s.ctx.Transcribe(samples, opts)
 	s.mu.Unlock()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "transcription failed: "+err.Error())

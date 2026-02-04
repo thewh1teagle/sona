@@ -35,12 +35,29 @@ func New(modelPath string) (*Context, error) {
 	return &Context{ctx: ctx}, nil
 }
 
-func (c *Context) Transcribe(samples []float32) (string, error) {
+func (c *Context) Transcribe(samples []float32, opts TranscribeOptions) (string, error) {
 	if c.ctx == nil {
 		return "", fmt.Errorf("whisper: context is nil")
 	}
 
 	params := C.whisper_full_default_params(C.WHISPER_SAMPLING_GREEDY)
+
+	if opts.Language != "" {
+		cLang := C.CString(opts.Language)
+		defer C.free(unsafe.Pointer(cLang))
+		params.language = cLang
+	}
+	if opts.Translate {
+		params.translate = C.bool(true)
+	}
+	if opts.Threads > 0 {
+		params.n_threads = C.int(opts.Threads)
+	}
+	if opts.Prompt != "" {
+		cPrompt := C.CString(opts.Prompt)
+		defer C.free(unsafe.Pointer(cPrompt))
+		params.initial_prompt = cPrompt
+	}
 
 	ret := C.whisper_full(c.ctx, params, (*C.float)(&samples[0]), C.int(len(samples)))
 	if ret != 0 {
