@@ -9,3 +9,8 @@ whisper.cpp/
 whisper-src/
 whisper-build/
 *.tar.gz
+whisper.cpp/
+whisper-src/
+whisper-build/
+*.tar.gz
+*.exe
