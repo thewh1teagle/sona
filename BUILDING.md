@@ -25,8 +25,35 @@ uv run scripts/download-libs.py
 go build -o sonara ./cmd/sonara/
 ```
 
+On Windows, build with cgo enabled and MinGW available (MSYS2 `MINGW64` shell is the easiest way):
+
+```bash
+C:\msys64\msys2_shell.cmd -mingw64 -defterm -no-start -here -use-full-path
+pacman -Sy --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-vulkan-devel
+export CGO_ENABLED=1
+go build -o sonara.exe ./cmd/sonara/
+```
+
 ## Bumping whisper.cpp
 
 1. Update the commit hash in `.whisper.cpp-commit`
 2. Run `uv run scripts/fetch-headers.py` and commit the updated headers
 3. Trigger the `Build whisper.cpp libs` workflow (or run `uv run scripts/build-libs.py --upload` locally)
+
+## Releasing binaries
+
+`Release Sonara` workflow builds and uploads `cmd/sonara` binaries for:
+- Linux: `amd64`, `arm64`
+- macOS: Apple Silicon and Intel
+- Windows: `amd64`
+
+It also injects the CLI version at build time via:
+
+```bash
+go build -ldflags "-X main.version=<tag>"
+```
+
+You can run releases in two ways:
+
+1. Push a tag like `v0.1.0` (workflow trigger: `push tags: v*`)
+2. Manual dispatch with input `version` (example: `v0.1.0`)
