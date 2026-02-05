@@ -1,89 +1,123 @@
-# Sona
+# Sona 🎧
 
-Sona is a local transcription runner built on `whisper.cpp`.
+Sona is a local transcription runner built on top of whisper.cpp.
 
-It is designed to be spawned and owned by another process (desktop app, Python script, etc.), with an OpenAI-compatible HTTP API as the transport.
+It runs as a standalone process and exposes an OpenAI-compatible HTTP API, so other apps (desktop apps, Python scripts, etc.) can spawn it and talk to it easily.
 
-## What It Does
+Think of it as a small, fast, local Whisper server you control.
 
-- Cross-platform binary (`macOS`, `Linux`, `Windows`)
-- GPU-accelerated `whisper.cpp` backend
-- OpenAI-compatible transcription endpoint: `POST /v1/audio/transcriptions`
-- Runtime model management via API:
-  - `POST /v1/models/load`
-  - `DELETE /v1/models`
-  - `GET /v1/models`
-- Lifecycle endpoints:
-  - `GET /health` (process alive)
-  - `GET /ready` (model loaded or not)
-- Dynamic port support: `sona serve --port 0` (OS assigns free port)
-- Machine-readable ready signal on stdout:
-  - `{"status":"ready","port":52341}`
-- Response formats: `json`, `text`, `verbose_json`, `srt`, `vtt`
-- Optional NDJSON streaming (`stream=true`) with progress + segment events
+---
 
-## Quick Start
+## Why Sona ✨
 
-1) Download a release binary:
+- Fully local transcription
+- Cross-platform single binary
+- GPU-accelerated by default
+- OpenAI-compatible API
+- Designed to be spawned and owned by another process
+- No heavy setup, no long-running system service
+
+---
+
+## Platform & GPU Support 🚀
+
+Sona ships prebuilt binaries for:
+
+- macOS (x86_64 and arm64)
+- Linux (x86_64 and arm64)
+- Windows (x86_64)
+
+GPU acceleration is enabled by default:
+
+- macOS: CoreML / Metal
+- Linux: Vulkan
+- Windows: Vulkan
+
+Sona automatically uses the best available backend for the platform.
+
+---
+
+## How It Works 🧠
+
+1. Your app starts the Sona process
+2. Sona binds to a local port (optionally chosen by the OS)
+3. Your app talks to Sona over HTTP
+4. Models are loaded and unloaded at runtime
+5. Transcription requests go through an OpenAI-compatible endpoint
+
+Sona is intentionally simple and predictable, so it can be embedded into larger systems.
+
+---
+
+## Quick Start ⚡
+
+### 1. Download a release binary
 
 https://github.com/thewh1teagle/sona/releases
 
-2) Download a model:
+### 2. Download a model
 
-```console
+'''
 ./sona pull https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
-```
+'''
 
-3) Start Sona (no model required at startup):
+### 3. Start Sona
 
-```console
+'''
 ./sona serve --port 0
-```
+'''
 
-It prints one ready line to stdout with the actual bound port, for example:
+Using port 0 lets the OS assign a free port automatically.
 
-```json
+When ready, Sona prints a single machine-readable line to stdout:
+
+'''
 {"status":"ready","port":52341}
-```
+'''
 
-4) Load model through API:
+This is intended for parent processes to detect readiness and discover the bound port.
 
-```console
-curl -X POST http://localhost:52341/v1/models/load \
-  -H "content-type: application/json" \
-  -d '{"path":"./ggml-base.bin"}'
-```
+---
 
-5) Transcribe:
+## Using Sona 🔌
 
-```console
-curl -X POST http://localhost:52341/v1/audio/transcriptions \
-  -F "file=@samples/jfk.wav" \
-  -F "response_format=verbose_json"
-```
+Sona exposes an OpenAI-compatible transcription API.
 
-## OpenAI Client Compatibility
+This means:
+- You can use existing OpenAI SDKs
+- You don’t need custom client code
+- Switching between local (Sona) and remote (OpenAI) is trivial
 
-```python
-from openai import OpenAI
+See the full API reference here:
+- API docs: /docs
+- OpenAPI spec: /openapi.json
 
-client = OpenAI(base_url="http://localhost:52341/v1", api_key="sona")
+---
 
-with open("samples/jfk.wav", "rb") as f:
-    result = client.audio.transcriptions.create(
-        model="ignored-by-sona",
-        file=f,
-        response_format="text",
-    )
+## Notes & Limitations ⚠️
 
-print(result)
-```
+- One transcription runs at a time per process  
+  concurrent requests return 429
+- Maximum upload size is 1 GB
+- Non-WAV audio is automatically converted using ffmpeg
+  - system ffmpeg or a bundled binary next to sona
 
-## Notes
+---
 
-- Sona handles one transcription at a time per process; concurrent requests return `429`.
-- Max upload size is `1 GB`.
-- Non-WAV/native audio is converted via `ffmpeg` automatically (system `ffmpeg` or bundled binary next to `sona`).
-- API docs:
-  - `GET /docs`
-  - `GET /openapi.json`
+## When to Use Sona 🎯
+
+Sona is a good fit if you want:
+- Local or offline transcription
+- Low-latency transcription in desktop apps
+- Full control over models and hardware
+- An OpenAI-like API without the OpenAI dependency
+
+If you just want hosted transcription, Sona is probably not what you need.
+
+---
+
+## Documentation 📚
+
+- API reference: /docs
+- OpenAPI schema: /openapi.json
+- Releases: https://github.com/thewh1teagle/sona/releases
