@@ -2,69 +2,109 @@
 
 ## Overview
 
-Sona is a single-process Go application with two modes:
+Sona is a single-process Go binary with two modes:
 
 - `sona transcribe <model.bin> <audio>`: one-shot local transcription.
-- `sona serve <model.bin>`: OpenAI-compatible HTTP server.
+- `sona serve [model.bin] --port <n>`: long-running HTTP runner.
 
-It is not a background daemon by default. The process lifetime is tied to the CLI invocation.
+The current server model is "runner, not shared service": one owner process spawns Sona, manages lifecycle, and sends transcription requests over HTTP.
 
-## Runtime components
+## Runtime Components
 
-- `cmd/sona/*`: CLI entrypoint and command wiring (Cobra).
-- `internal/audio`: input decoding/conversion to 16kHz mono float32 samples.
-  - Fast path: native PCM WAV via `internal/wav`.
-  - Fallback: `ffmpeg` conversion for non-native formats.
-- `internal/whisper`: cgo wrapper around whisper.cpp.
-  - Platform link config in `whisper_linux.go`, `whisper_darwin.go`, `whisper_windows.go`.
-  - Core wrapper in `whisper_cgo.go` (`New`, `Transcribe`, `Close`).
-- `internal/server`: HTTP API surface.
-  - `POST /v1/audio/transcriptions`
-  - `GET /v1/models`
+- `cmd/sona/*`
+  - CLI commands (`transcribe`, `serve`, `pull`).
+- `internal/audio`
+  - Converts input audio to `16kHz` mono `float32`.
+  - Fast path: native PCM WAV (`internal/wav`).
+  - Fallback: `ffmpeg` conversion.
+- `internal/whisper`
+  - CGo wrapper over `whisper.cpp`.
+  - Exposes segments, progress callbacks, and abort callbacks.
+- `internal/server`
+  - HTTP routes, model lifecycle, concurrency control, and graceful shutdown.
+- `sonapy/src/sonapy`
+  - Python helper that spawns `sona serve --port 0`, waits for stdout ready signal, and calls the HTTP API.
 
-## Execution flow
+## Server Lifecycle
 
-### CLI transcription flow
+1. `ListenAndServe` binds TCP (`--port 0` supported for auto-assigned port).
+2. It prints one machine-readable line to stdout:
+   - `{"status":"ready","port":<actual-port>}`
+3. HTTP server starts and handles API traffic.
+4. On `SIGINT`/`SIGTERM`:
+   - stop accepting new connections (`http.Server.Shutdown`, 30s timeout)
+   - unload model (`whisper.Context.Close`)
+   - exit cleanly
 
-1. Parse flags/args in `cmd/sona/commands.go`.
-2. Decode audio (`internal/audio.ReadFile`).
-3. Load model into a whisper context (`whisper.New`).
-4. Run inference (`Context.Transcribe`).
-5. Print text and exit.
+## API Surface
 
-### Server flow
+- `GET /health`
+  - Always `200`, process is alive.
+- `GET /ready`
+  - `200` when model is loaded.
+  - `503` when no model is loaded.
+- `POST /v1/models/load` with JSON body `{"path":"..."}`
+  - Loads model from disk (replaces currently loaded model if any).
+- `DELETE /v1/models`
+  - Unloads current model; idempotent.
+- `GET /v1/models`
+  - Returns OpenAI-style model list with 0 or 1 loaded model.
+- `POST /v1/audio/transcriptions`
+  - Multipart file upload + form options:
+    - `response_format`: `json` (default), `text`, `verbose_json`, `srt`, `vtt`
+    - `stream`: `true|false` (NDJSON event stream when true)
+    - `language`, `detect_language`, `prompt`, `enhance_audio`
 
-1. Start process with `sona serve <model.bin>`.
-2. Load one whisper context and keep it in memory.
-3. For each request:
-   - Read multipart `file` field (max 25 MB).
-   - Decode/convert audio.
-   - Transcribe with shared context.
-   - Return JSON `{ "text": "..." }`.
+Docs endpoints are served at `/docs` and `/openapi.json`.
 
-## Concurrency model
+## Transcription Execution Flow
 
-- `internal/server.Server` protects the shared whisper context with a mutex.
-- Effect: one transcription runs at a time per process instance.
-- Scale-out today is process-level (run multiple instances), not intra-process parallel request execution.
+1. `handleTranscription` takes a global mutex with `TryLock`.
+2. If busy, returns `429` (no queue).
+3. Validates model loaded; otherwise `503`.
+4. Reads multipart `file` (max upload: `1 GB`).
+5. Decodes audio (`internal/audio.ReadWithOptions`).
+6. Calls `Context.TranscribeStream(...)`:
+   - non-stream mode still uses stream-capable whisper path
+   - client disconnect toggles abort callback for cancellation
+7. Formats output by `response_format`:
+   - `json`: `{ "text": "..." }`
+   - `verbose_json`: full text + timestamped segments
+   - `text`, `srt`, `vtt`: plain text subtitle/string responses
 
-## Build and packaging architecture
+### Streaming Mode
+
+When `stream=true`, `Content-Type: application/x-ndjson` is returned.
+
+Event types emitted as JSON lines:
+
+- `progress` (`progress: 0-100`)
+- `segment` (`start`, `end`, `text`)
+- `result` (`text`)
+- `error` (`message`, if inference fails before disconnect)
+
+Closing the client connection cancels inference through the whisper abort callback.
+
+## Concurrency Model
+
+- One mutex protects model state and inference path.
+- Effective behavior:
+  - one model loaded at a time
+  - one transcription at a time per process
+  - concurrent transcription requests return `429`
+- Scale-out is process-level (run multiple Sona instances).
+
+## Build and Packaging
 
 - Whisper dependency is pinned by `.whisper.cpp-commit`.
-- Prebuilt static libs are produced per platform and published as GitHub release assets (`libraries-<commit7>`).
-- `scripts/download-libs.py` fetches those libs into `third_party/lib`.
-- `scripts/fetch-headers.py` fetches C headers into `third_party/include`.
-- Go binary links statically against the downloaded whisper/ggml libs (platform-specific cgo flags).
-- Release packaging (`scripts/package-release.py`) bundles the `sona` binary plus `ffmpeg`.
+- Platform static libs are downloaded to `third_party/lib` by `scripts/download-libs.py`.
+- Headers are fetched to `third_party/include` by `scripts/fetch-headers.py`.
+- Go binary links against platform-specific whisper/ggml libs.
+- Release packaging (`scripts/package-release.py`) bundles `sona` plus `ffmpeg`.
 
-## Current boundaries
+## Current Boundaries
 
-- No built-in daemon/service management (systemd/launchd/windows service not included).
-- No installer package flow in repo yet (Homebrew/apt/choco/etc.).
-- No self-update mechanism in the binary.
-- API returns completed transcription only; no token/segment streaming endpoint yet.
-- Python support is API-based today (OpenAI client works against `sona serve`), not an in-process Python module.
-
-## Opportunities
-
-- URL ingestion via `yt-dlp`: accept media URLs in CLI/API, fetch audio with `yt-dlp`, then route into the existing `ffmpeg` conversion + transcription pipeline.
+- No auth/multi-tenant concerns (runner model assumes single owner).
+- No internal job queue or async job IDs (busy returns `429`).
+- No daemon/service-manager integration (systemd/launchd/windows service).
+- No in-process bindings for non-Go runtimes; integrations use HTTP (optionally via `sonapy`).

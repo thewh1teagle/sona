@@ -1,90 +1,89 @@
-# 🎙️ Sona
+# Sona
 
-Like **Ollama**, but for **speech transcription**.  
-Built on top of **whisper.cpp** with fast **GPU acceleration** (Metal on macOS, Vulkan on Linux and Windows).
+Sona is a local transcription runner built on `whisper.cpp`.
 
----
+It is designed to be spawned and owned by another process (desktop app, Python script, etc.), with an OpenAI-compatible HTTP API as the transport.
 
-## ✨ Features
+## What It Does
 
-- **Cross-platform binaries**  
-  Windows (x86_64), Linux (x86_64 / arm64), macOS (Apple Silicon and Intel)
-
-- **GPU acceleration out of the box**  
-  Vulkan on Windows/Linux, CoreML/Metal on macOS
-
-- **OpenAI-compatible REST API**  
-  Drop-in replacement for existing transcription workflows
-
-- **CLI + Server mode**  
-  Transcribe locally or run a long-lived service
-
-- **Bundled ffmpeg**  
-  No extra installs, works with almost any audio or video format
-
-- **Automatic format handling**  
-  Audio is converted transparently via ffmpeg
-
----
+- Cross-platform binary (`macOS`, `Linux`, `Windows`)
+- GPU-accelerated `whisper.cpp` backend
+- OpenAI-compatible transcription endpoint: `POST /v1/audio/transcriptions`
+- Runtime model management via API:
+  - `POST /v1/models/load`
+  - `DELETE /v1/models`
+  - `GET /v1/models`
+- Lifecycle endpoints:
+  - `GET /health` (process alive)
+  - `GET /ready` (model loaded or not)
+- Dynamic port support: `sona serve --port 0` (OS assigns free port)
+- Machine-readable ready signal on stdout:
+  - `{"status":"ready","port":52341}`
+- Response formats: `json`, `text`, `verbose_json`, `srt`, `vtt`
+- Optional NDJSON streaming (`stream=true`) with progress + segment events
 
 ## Quick Start
 
-### 1. Download Sona
-Grab the binary for your platform:  
+1) Download a release binary:
+
 https://github.com/thewh1teagle/sona/releases
 
----
+2) Download a model:
 
-### 2. Download a Whisper model
-
-Model list:  
-https://huggingface.co/ggerganov/whisper.cpp/tree/main
-
-Using Sona:
 ```console
 ./sona pull https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 ```
 
----
-
-### 3. Start the server
-```console
-./sona serve ./ggml-base.bin
-```
-
----
-
-## 🔌 OpenAI-Compatible API
-
-Sona speaks the OpenAI API, so existing clients just work.
+3) Start Sona (no model required at startup):
 
 ```console
-wget https://github.com/ggml-org/whisper.cpp/raw/refs/heads/master/samples/jfk.wav -O sample.wav
-pip install openai
+./sona serve --port 0
 ```
+
+It prints one ready line to stdout with the actual bound port, for example:
+
+```json
+{"status":"ready","port":52341}
+```
+
+4) Load model through API:
+
+```console
+curl -X POST http://localhost:52341/v1/models/load \
+  -H "content-type: application/json" \
+  -d '{"path":"./ggml-base.bin"}'
+```
+
+5) Transcribe:
+
+```console
+curl -X POST http://localhost:52341/v1/audio/transcriptions \
+  -F "file=@samples/jfk.wav" \
+  -F "response_format=verbose_json"
+```
+
+## OpenAI Client Compatibility
 
 ```python
 from openai import OpenAI
 
-client = OpenAI(
-    base_url="http://localhost:11531/v1",
-    api_key="sona",
-)
+client = OpenAI(base_url="http://localhost:52341/v1", api_key="sona")
 
-with open("sample.wav", "rb") as f:
+with open("samples/jfk.wav", "rb") as f:
     result = client.audio.transcriptions.create(
-        model="ggml-base.bin",
+        model="ignored-by-sona",
         file=f,
+        response_format="text",
     )
 
-print(result.text)
+print(result)
 ```
 
-📚 API Docs
+## Notes
 
-Interactive docs (Swagger UI):
-http://localhost:11531/docs
-
-OpenAPI spec:
-http://localhost:11531/openapi.json
-
+- Sona handles one transcription at a time per process; concurrent requests return `429`.
+- Max upload size is `1 GB`.
+- Non-WAV/native audio is converted via `ffmpeg` automatically (system `ffmpeg` or bundled binary next to `sona`).
+- API docs:
+  - `GET /docs`
+  - `GET /openapi.json`
