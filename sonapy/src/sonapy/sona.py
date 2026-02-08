@@ -66,10 +66,12 @@ class Sona:
         response_format: str = "json",
         language: str = "",
         stream: bool = False,
+        diarize_model: str = "",
     ) -> dict | str | Generator[dict, None, None]:
         return self._client.transcribe(
             file_path,
             response_format=response_format,
             language=language,
             stream=stream,
+            diarize_model=diarize_model,
         )

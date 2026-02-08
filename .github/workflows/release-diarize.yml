@@ -40,9 +40,12 @@ jobs:
           - runner: macos-14
             target: aarch64-apple-darwin
             binary: sona-diarize-darwin-arm64
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-            binary: sona-diarize-darwin-amd64
+          # x86_64-apple-darwin disabled: ort does not provide prebuilt ONNX Runtime
+          # binaries for this target. Re-enable if ort adds support or if we switch
+          # to load-dynamic with a bundled dylib.
+          # - runner: macos-15-intel
+          #   target: x86_64-apple-darwin
+          #   binary: sona-diarize-darwin-amd64
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             binary: sona-diarize-windows-amd64.exe

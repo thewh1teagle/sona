@@ -44,11 +44,15 @@ class Client:
         response_format: str = "json",
         language: str = "",
         stream: bool = False,
+        diarize_model: str = "",
     ) -> dict | str | Generator[dict, None, None]:
         """Transcribe an audio file.
 
         Returns a dict for json/verbose_json, a string for text/srt/vtt,
         or a generator of ndjson dicts when *stream* is True.
+
+        If *diarize_model* is set (path to a Sortformer .onnx model),
+        segments in verbose_json will include a ``speaker`` field.
         """
         path = Path(file_path)
         if not path.exists():
@@ -59,6 +63,8 @@ class Client:
             data["language"] = language
         if stream:
             data["stream"] = "true"
+        if diarize_model:
+            data["diarize_model"] = diarize_model
 
         if stream:
             return self._stream_transcribe(path, data)
