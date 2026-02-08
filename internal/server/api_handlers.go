@@ -100,11 +100,21 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	samplingStrategy := r.FormValue("sampling_strategy")
 	opts := whisper.TranscribeOptions{
 		Language:       r.FormValue("language"),
 		DetectLanguage: parseBoolFormValue(r.FormValue("detect_language")),
+		Translate:      parseBoolFormValue(r.FormValue("translate")),
+		Threads:        parseIntFormValue(r.FormValue("n_threads")),
 		Prompt:         r.FormValue("prompt"),
 		Verbose:        s.verbose,
+		Temperature:    parseFloatFormValue(r.FormValue("temperature")),
+		MaxTextCtx:     parseIntFormValue(r.FormValue("max_text_ctx")),
+		WordTimestamps: parseBoolFormValue(r.FormValue("word_timestamps")),
+		MaxSegmentLen:  parseIntFormValue(r.FormValue("max_segment_len")),
+		SamplingGreedy: samplingStrategy != "beam_search",
+		BestOf:         parseIntFormValue(r.FormValue("best_of")),
+		BeamSize:       parseIntFormValue(r.FormValue("beam_size")),
 	}
 
 	responseFormat := r.FormValue("response_format")

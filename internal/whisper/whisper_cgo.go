@@ -100,7 +100,11 @@ func (c *Context) TranscribeStream(samples []float32, opts TranscribeOptions, cb
 		return TranscribeResult{}, fmt.Errorf("whisper: context is nil")
 	}
 
-	params := C.whisper_full_default_params(C.WHISPER_SAMPLING_GREEDY)
+	strategy := C.enum_whisper_sampling_strategy(C.WHISPER_SAMPLING_GREEDY)
+	if !opts.SamplingGreedy && opts.BeamSize > 0 {
+		strategy = C.enum_whisper_sampling_strategy(C.WHISPER_SAMPLING_BEAM_SEARCH)
+	}
+	params := C.whisper_full_default_params(strategy)
 	params.print_special = C.bool(opts.Verbose)
 	params.print_progress = C.bool(opts.Verbose)
 	params.print_realtime = C.bool(opts.Verbose)
@@ -124,6 +128,24 @@ func (c *Context) TranscribeStream(samples []float32, opts TranscribeOptions, cb
 		cPrompt := C.CString(opts.Prompt)
 		defer C.free(unsafe.Pointer(cPrompt))
 		params.initial_prompt = cPrompt
+	}
+	if opts.Temperature > 0 {
+		params.temperature = C.float(opts.Temperature)
+	}
+	if opts.MaxTextCtx > 0 {
+		params.n_max_text_ctx = C.int(opts.MaxTextCtx)
+	}
+	if opts.WordTimestamps {
+		params.token_timestamps = C.bool(true)
+	}
+	if opts.MaxSegmentLen > 0 {
+		params.max_len = C.int(opts.MaxSegmentLen)
+	}
+	if opts.BestOf > 0 {
+		params.greedy.best_of = C.int(opts.BestOf)
+	}
+	if opts.BeamSize > 0 {
+		params.beam_search.beam_size = C.int(opts.BeamSize)
 	}
 
 	// Set up streaming callbacks if any are provided.

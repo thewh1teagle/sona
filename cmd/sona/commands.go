@@ -28,8 +28,9 @@ func newRootCommand() *cobra.Command {
 func (a *app) newTranscribeCommand() *cobra.Command {
 	var language, prompt string
 	var translate, detectLanguage bool
-	var enhanceAudio bool
-	var threads int
+	var enhanceAudio, wordTimestamps bool
+	var threads, maxTextCtx, maxSegmentLen, bestOf, beamSize int
+	var temperature float32
 
 	cmd := &cobra.Command{
 		Use:   "transcribe <model.bin> <audio.wav>",
@@ -61,6 +62,12 @@ func (a *app) newTranscribeCommand() *cobra.Command {
 				Threads:        threads,
 				Prompt:         prompt,
 				Verbose:        a.verbose,
+				Temperature:    temperature,
+				MaxTextCtx:     maxTextCtx,
+				WordTimestamps: wordTimestamps,
+				MaxSegmentLen:  maxSegmentLen,
+				BestOf:         bestOf,
+				BeamSize:       beamSize,
 			})
 			if err != nil {
 				return fmt.Errorf("error transcribing: %w", err)
@@ -76,6 +83,12 @@ func (a *app) newTranscribeCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&translate, "translate", false, "translate to English")
 	cmd.Flags().IntVar(&threads, "threads", 0, "CPU threads (0 = default)")
 	cmd.Flags().StringVar(&prompt, "prompt", "", "initial prompt / vocabulary hint")
+	cmd.Flags().Float32Var(&temperature, "temperature", 0, "initial decoding temperature (0 = default)")
+	cmd.Flags().IntVar(&maxTextCtx, "max-text-ctx", 0, "max tokens from past text as context (0 = default)")
+	cmd.Flags().BoolVar(&wordTimestamps, "word-timestamps", false, "enable token-level timestamps")
+	cmd.Flags().IntVar(&maxSegmentLen, "max-segment-len", 0, "max segment length in characters (0 = no limit)")
+	cmd.Flags().IntVar(&bestOf, "best-of", 0, "greedy sampling: top candidates (0 = default)")
+	cmd.Flags().IntVar(&beamSize, "beam-size", 0, "beam search: beam width (0 = default)")
 	return cmd
 }
 
