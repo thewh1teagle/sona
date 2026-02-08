@@ -18,11 +18,13 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            archive: sona-linux-amd64-with-ffmpeg.tar.gz
+            archive: sona-linux-amd64
             binary: sona
+            raw: true
           - runner: ubuntu-24.04-arm
-            archive: sona-linux-arm64-with-ffmpeg.tar.gz
+            archive: sona-linux-arm64
             binary: sona
+            raw: true
           - runner: macos-14
             archive: sona-darwin-arm64-with-ffmpeg.tar.gz
             binary: sona
@@ -49,13 +51,21 @@ jobs:
           msystem: MINGW64
           install: wget
 
+      - name: Install system ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Download release bundle and test assets (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p models samples
           wget -O "${ARCHIVE}" "https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARCHIVE}"
-          tar -xzf "${ARCHIVE}"
+          if [ "${{ matrix.raw }}" = "true" ]; then
+            mv "${ARCHIVE}" "${BINARY}"
+          else
+            tar -xzf "${ARCHIVE}"
+          fi
           wget -O models/ggml-tiny.bin "${MODEL_URL}"
           wget -O samples/jfk.wav "${SAMPLE_URL}"
           chmod +x "${BINARY}"
