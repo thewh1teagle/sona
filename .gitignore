@@ -20,3 +20,5 @@ whisper-build/
 *.bin
 __pycache__/
 *.pyc
+target/
+*.onnx

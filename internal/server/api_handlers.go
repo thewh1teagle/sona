@@ -3,11 +3,14 @@ package server
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
 
 	"github.com/thewh1teagle/sona/internal/audio"
+	"github.com/thewh1teagle/sona/internal/diarize"
 	"github.com/thewh1teagle/sona/internal/whisper"
 )
 
@@ -92,12 +95,56 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	samples, err := audio.ReadWithOptions(file, audio.ReadOptions{
+	diarizeModel := r.FormValue("diarize_model")
+
+	// If diarization requested, save upload to temp file so sona-diarize can read it.
+	var tempAudioPath string
+	var fileReader io.ReadSeeker = file
+	if diarizeModel != "" {
+		tmp, tmpErr := os.CreateTemp("", "sona-diar-*.wav")
+		if tmpErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create temp file: "+tmpErr.Error())
+			return
+		}
+		defer os.Remove(tmp.Name())
+		if _, copyErr := io.Copy(tmp, file); copyErr != nil {
+			tmp.Close()
+			writeError(w, http.StatusInternalServerError, "failed to buffer upload: "+copyErr.Error())
+			return
+		}
+		tmp.Close()
+		tempAudioPath = tmp.Name()
+
+		// Reopen for audio decoding
+		reopened, reopenErr := os.Open(tempAudioPath)
+		if reopenErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to reopen temp file: "+reopenErr.Error())
+			return
+		}
+		defer reopened.Close()
+		fileReader = reopened
+	}
+
+	samples, err := audio.ReadWithOptions(fileReader, audio.ReadOptions{
 		EnhanceAudio: parseBoolFormValue(r.FormValue("enhance_audio")),
 	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid audio file: "+err.Error())
 		return
+	}
+
+	// Start diarization in background if requested.
+	type diarResult struct {
+		segments []diarize.Segment
+		err      error
+	}
+	var diarCh chan diarResult
+	if diarizeModel != "" && tempAudioPath != "" {
+		diarCh = make(chan diarResult, 1)
+		go func() {
+			segs, dErr := diarize.Diarize(diarizeModel, tempAudioPath)
+			diarCh <- diarResult{segs, dErr}
+		}()
 	}
 
 	samplingStrategy := r.FormValue("sampling_strategy")
@@ -147,10 +194,21 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect diarization results (skip silently on failure).
+	var diarSegments []diarize.Segment
+	if diarCh != nil {
+		dr := <-diarCh
+		if dr.err != nil {
+			log.Printf("diarization failed (skipping): %v", dr.err)
+		} else {
+			diarSegments = dr.segments
+		}
+	}
+
 	switch responseFormat {
 	case "verbose_json":
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(buildVerboseJSON(result.Segments))
+		json.NewEncoder(w).Encode(buildVerboseJSON(result.Segments, diarSegments))
 	case "text":
 		w.Header().Set("Content-Type", "text/plain")
 		io.WriteString(w, result.Text())
