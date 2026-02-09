@@ -97,11 +97,13 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 
 	diarizeModel := r.FormValue("diarize_model")
 
-	// If diarization requested, save upload to temp file so sona-diarize can read it.
+	// If diarization requested, save upload to temp file, then convert to
+	// native 16kHz mono PCM WAV so sona-diarize can read it. The converted
+	// file is also used for whisper (skips its own ffmpeg pass).
 	var tempAudioPath string
 	var fileReader io.ReadSeeker = file
 	if diarizeModel != "" {
-		tmp, tmpErr := os.CreateTemp("", "sona-diar-*.wav")
+		tmp, tmpErr := os.CreateTemp("", "sona-diar-*.audio")
 		if tmpErr != nil {
 			writeError(w, http.StatusInternalServerError, "failed to create temp file: "+tmpErr.Error())
 			return
@@ -113,12 +115,21 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		tmp.Close()
-		tempAudioPath = tmp.Name()
 
-		// Reopen for audio decoding
-		reopened, reopenErr := os.Open(tempAudioPath)
+		// Convert to native WAV for diarization (and reuse for whisper).
+		nativeWav := tmp.Name() + ".wav"
+		if convErr := audio.ConvertToNativeWav(tmp.Name(), nativeWav, false); convErr != nil {
+			log.Printf("failed to convert audio to native WAV: %v", convErr)
+			writeError(w, http.StatusBadRequest, "failed to convert audio for diarization: "+convErr.Error())
+			return
+		}
+		defer os.Remove(nativeWav)
+		tempAudioPath = nativeWav
+
+		// Reopen converted file for audio decoding
+		reopened, reopenErr := os.Open(nativeWav)
 		if reopenErr != nil {
-			writeError(w, http.StatusInternalServerError, "failed to reopen temp file: "+reopenErr.Error())
+			writeError(w, http.StatusInternalServerError, "failed to reopen converted file: "+reopenErr.Error())
 			return
 		}
 		defer reopened.Close()

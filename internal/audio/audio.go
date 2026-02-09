@@ -1,10 +1,8 @@
 package audio
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,34 +52,26 @@ func findFFmpeg() (string, error) {
 	return "", fmt.Errorf("ffmpeg not found: %w", err)
 }
 
-// convertWithFFmpeg writes the input to a temp file, runs ffmpeg to convert
-// it to 16kHz mono s16le PCM via pipe output, and returns float32 samples.
-func convertWithFFmpeg(r io.Reader, ffmpegPath string, opts ReadOptions) ([]float32, error) {
-	tmp, err := os.CreateTemp("", "sona-*.audio")
+// ConvertToNativeWav converts any audio file to a 16kHz mono 16-bit PCM WAV file
+// on disk using ffmpeg. When enhanceAudio is true, a silence removal filter is applied.
+func ConvertToNativeWav(inputPath, outputPath string, enhanceAudio bool) error {
+	ffmpegPath, err := findFFmpeg()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %w", err)
+		return err
 	}
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
-
-	if _, err := io.Copy(tmp, r); err != nil {
-		return nil, fmt.Errorf("failed to write temp file: %w", err)
-	}
-	tmp.Close()
 
 	args := []string{
-		"-i", tmp.Name(),
+		"-i", inputPath,
 		"-ar", "16000",
 		"-ac", "1",
 	}
-	if opts.EnhanceAudio {
-		// Quality-over-speed cleanup path to reduce transcription drift on noisy/long files.
+	if enhanceAudio {
 		args = append(args, "-af", "silenceremove=stop_periods=-1:stop_duration=0.7:stop_threshold=-45dB")
 	}
 	args = append(args,
-		"-f", "s16le",
 		"-acodec", "pcm_s16le",
-		"pipe:1",
+		"-y",
+		outputPath,
 	)
 
 	cmd := exec.Command(ffmpegPath, args...)
@@ -91,18 +81,10 @@ func convertWithFFmpeg(r io.Reader, ffmpegPath string, opts ReadOptions) ([]floa
 		cmd.Stderr = io.Discard
 	}
 
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("ffmpeg conversion failed: %w", err)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ffmpeg WAV conversion failed: %w", err)
 	}
-
-	nSamples := len(out) / 2
-	samples := make([]float32, nSamples)
-	for i := 0; i < nSamples; i++ {
-		sample := int16(binary.LittleEndian.Uint16(out[i*2 : i*2+2]))
-		samples[i] = float32(float64(sample) / math.MaxInt16)
-	}
-	return samples, nil
+	return nil
 }
 
 // Read decodes audio from an io.ReadSeeker into float32 samples at 16kHz mono.
@@ -120,17 +102,33 @@ func ReadWithOptions(r io.ReadSeeker, opts ReadOptions) ([]float32, error) {
 
 	// Not a native WAV (or enhancement requested) — need ffmpeg
 	r.Seek(0, io.SeekStart)
-	ffmpegPath, err := findFFmpeg()
-	if err != nil {
-		if h.SampleRate != 0 {
-			// It's a WAV but not native format
-			return nil, fmt.Errorf("audio requires conversion (got %dHz %dch %dbit) but %w",
-				h.SampleRate, h.Channels, h.BitsPerSample, err)
-		}
-		return nil, fmt.Errorf("unsupported audio format and %w", err)
-	}
 
-	return convertWithFFmpeg(r, ffmpegPath, opts)
+	// Save to temp file for ffmpeg input
+	tmp, err := os.CreateTemp("", "sona-*.audio")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+
+	if _, err := io.Copy(tmp, r); err != nil {
+		tmp.Close()
+		return nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	tmp.Close()
+
+	// Convert to native WAV via ffmpeg
+	nativeWav := tmp.Name() + ".wav"
+	if err := ConvertToNativeWav(tmp.Name(), nativeWav, opts.EnhanceAudio); err != nil {
+		return nil, err
+	}
+	defer os.Remove(nativeWav)
+
+	f, err := os.Open(nativeWav)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open converted file: %w", err)
+	}
+	defer f.Close()
+	return wav.Read(f)
 }
 
 // ReadFile opens an audio file by path and returns float32 samples at 16kHz mono.
