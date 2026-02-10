@@ -110,12 +110,12 @@ func (c *Context) TranscribeStream(samples []float32, opts TranscribeOptions, cb
 	params.print_realtime = C.bool(opts.Verbose)
 	params.print_timestamps = C.bool(opts.Verbose)
 
-	if opts.Language != "" && opts.Language != "auto" {
+	if opts.Language != "" {
 		cLang := C.CString(opts.Language)
 		defer C.free(unsafe.Pointer(cLang))
-		params.language = cLang
+		params.language = cLang // whisper.cpp handles "auto" natively
 	}
-	if opts.DetectLanguage || opts.Language == "auto" {
+	if opts.DetectLanguage {
 		params.detect_language = C.bool(true)
 	}
 	if opts.Translate {
