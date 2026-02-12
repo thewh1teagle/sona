@@ -74,6 +74,23 @@ def build(src_dir: Path, build_dir: Path):
     run("cmake", "--build", str(build_dir), "--config", "Release", f"-j{jobs}")
 
 
+def build_vulkan_delay_lib(build_dir: Path):
+    """Create a delay-import library for vulkan-1.dll so sona doesn't crash on startup without Vulkan."""
+    if platform.system() != "Windows":
+        return
+    delay_dir = build_dir / "delay"
+    delay_dir.mkdir(exist_ok=True)
+    # Find vulkan-1.dll in MinGW
+    result = subprocess.run(["where", "vulkan-1.dll"], capture_output=True, text=True)
+    if result.returncode != 0:
+        # Try common MinGW path
+        dll_path = "vulkan-1.dll"
+    else:
+        dll_path = result.stdout.strip().splitlines()[0]
+    run("gendef", dll_path, cwd=str(delay_dir))
+    run("dlltool", "--input-def", "vulkan-1.def", "--output-delaylib", "libvulkan-1-delay.a", cwd=str(delay_dir))
+
+
 def lib_names() -> list[str]:
     common = ["libwhisper.a", "libggml.a", "libggml-base.a", "libggml-cpu.a"]
     system = platform.system()
@@ -81,6 +98,8 @@ def lib_names() -> list[str]:
         common += ["libggml-metal.a", "libggml-blas.a"]
     elif system in ("Linux", "Windows"):
         common += ["libggml-vulkan.a"]
+    if system == "Windows":
+        common += ["libvulkan-1-delay.a"]
     return common
 
 
@@ -153,6 +172,7 @@ def main():
 
     clone(commit, src_dir)
     build(src_dir, build_dir)
+    build_vulkan_delay_lib(build_dir)
     package(build_dir, src_dir, archive)
 
     if args.upload:

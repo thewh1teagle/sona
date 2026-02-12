@@ -88,7 +88,9 @@ func New(modelPath string, gpuDevice int) (*Context, error) {
 	}
 
 	params := C.whisper_context_default_params()
-	if gpuDevice >= 0 {
+	if !VulkanAvailable() {
+		params.use_gpu = C.bool(false)
+	} else if gpuDevice >= 0 {
 		params.gpu_device = C.int(gpuDevice)
 	}
 	ctx := C.whisper_init_from_buffer_with_params(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), params)
