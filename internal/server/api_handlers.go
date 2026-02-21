@@ -47,6 +47,7 @@ func (s *Server) handleModelLoad(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Path      string `json:"path"`
 		GpuDevice *int   `json:"gpu_device,omitempty"` // optional; nil = whisper default
+		NoGpu     bool   `json:"no_gpu,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Path == "" {
 		writeError(w, http.StatusBadRequest, "request body must contain {\"path\": \"...\"}")
@@ -58,7 +59,7 @@ func (s *Server) handleModelLoad(w http.ResponseWriter, r *http.Request) {
 		gpuDevice = *body.GpuDevice
 	}
 
-	if err := s.LoadModel(body.Path, gpuDevice); err != nil {
+	if err := s.LoadModel(body.Path, gpuDevice, body.NoGpu); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load model: "+err.Error())
 		return
 	}
@@ -317,6 +318,19 @@ func (s *Server) handleStreamingTranscription(w http.ResponseWriter, r *http.Req
 		"text": result.Text(),
 	})
 	flusher.Flush()
+}
+
+// handleDevices returns GPU/iGPU devices discovered by ggml backends.
+func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
+	devices := whisper.ListGPUDevices()
+	if devices == nil {
+		devices = []whisper.GPUDevice{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"object": "list",
+		"data":   devices,
+	})
 }
 
 func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {

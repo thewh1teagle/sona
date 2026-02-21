@@ -96,7 +96,6 @@ func (a *app) newTranscribeCommand() *cobra.Command {
 func (a *app) newServeCommand() *cobra.Command {
 	var host string
 	var port int
-	var noGpu bool
 
 	cmd := &cobra.Command{
 		Use:   "serve [model.bin]",
@@ -106,13 +105,13 @@ func (a *app) newServeCommand() *cobra.Command {
 			audio.SetVerbose(a.verbose)
 			whisper.SetVerbose(a.verbose)
 
-			s := server.New(a.verbose, noGpu)
+			s := server.New(a.verbose)
 			s.Version = version
 			s.Commit = commit
 
 			// Load initial model if provided.
 			if len(args) > 0 {
-				if err := s.LoadModel(args[0], -1); err != nil {
+				if err := s.LoadModel(args[0], -1, false); err != nil {
 					return fmt.Errorf("error loading model: %w", err)
 				}
 			}
@@ -123,6 +122,5 @@ func (a *app) newServeCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind to")
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "port to listen on (0 = auto-assign)")
-	cmd.Flags().BoolVar(&noGpu, "no-gpu", false, "disable GPU acceleration, use CPU only")
 	return cmd
 }

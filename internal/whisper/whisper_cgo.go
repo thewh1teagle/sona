@@ -143,3 +143,36 @@ func (c *Context) Close() {
 		c.ctx = nil
 	}
 }
+
+// GPUDevice describes a backend device reported by ggml.
+type GPUDevice struct {
+	Index       int    `json:"index"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"` // "gpu", "igpu", "cpu", "accel"
+}
+
+// ListGPUDevices returns GPU and integrated-GPU devices from ggml backends.
+func ListGPUDevices() []GPUDevice {
+	n := int(C.sona_gpu_device_count())
+	var devices []GPUDevice
+	for i := 0; i < n; i++ {
+		devType := int(C.sona_gpu_device_type(C.int(i)))
+		typeName := ""
+		switch devType {
+		case 1: // GGML_BACKEND_DEVICE_TYPE_GPU
+			typeName = "gpu"
+		case 2: // GGML_BACKEND_DEVICE_TYPE_IGPU
+			typeName = "igpu"
+		default:
+			continue // skip CPU and ACCEL devices
+		}
+		devices = append(devices, GPUDevice{
+			Index:       i,
+			Name:        C.GoString(C.sona_gpu_device_name(C.int(i))),
+			Description: C.GoString(C.sona_gpu_device_description(C.int(i))),
+			Type:        typeName,
+		})
+	}
+	return devices
+}

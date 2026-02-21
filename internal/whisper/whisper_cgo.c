@@ -45,3 +45,31 @@ void sona_whisper_set_stream_callbacks(struct whisper_full_params *params, uintp
     params->abort_callback = sona_whisper_abort_trampoline;
     params->abort_callback_user_data = h;
 }
+
+// GPU device enumeration via ggml backend API.
+
+int sona_gpu_device_count(void) {
+    return (int)ggml_backend_dev_count();
+}
+
+static ggml_backend_dev_t sona_gpu_dev_at(int index) {
+    if (index < 0 || index >= sona_gpu_device_count()) {
+        return NULL;
+    }
+    return ggml_backend_dev_get((size_t)index);
+}
+
+const char *sona_gpu_device_name(int index) {
+    ggml_backend_dev_t dev = sona_gpu_dev_at(index);
+    return dev ? ggml_backend_dev_name(dev) : "";
+}
+
+const char *sona_gpu_device_description(int index) {
+    ggml_backend_dev_t dev = sona_gpu_dev_at(index);
+    return dev ? ggml_backend_dev_description(dev) : "";
+}
+
+int sona_gpu_device_type(int index) {
+    ggml_backend_dev_t dev = sona_gpu_dev_at(index);
+    return dev ? (int)ggml_backend_dev_type(dev) : -1;
+}

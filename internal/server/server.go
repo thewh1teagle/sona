@@ -25,24 +25,23 @@ type Server struct {
 	modelName string
 	modelPath string
 	verbose   bool
-	noGpu     bool
 	Version   string
 	Commit    string
 }
 
-func New(verbose bool, noGpu bool) *Server {
-	return &Server{verbose: verbose, noGpu: noGpu}
+func New(verbose bool) *Server {
+	return &Server{verbose: verbose}
 }
 
 // LoadModel loads a whisper model, unloading any existing one first.
 // gpuDevice selects the GPU (-1 = use whisper default).
-func (s *Server) LoadModel(path string, gpuDevice int) error {
+func (s *Server) LoadModel(path string, gpuDevice int, noGpu bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.loadModelLocked(path, gpuDevice)
+	return s.loadModelLocked(path, gpuDevice, noGpu)
 }
 
-func (s *Server) loadModelLocked(path string, gpuDevice int) error {
+func (s *Server) loadModelLocked(path string, gpuDevice int, noGpu bool) error {
 	if s.ctx != nil {
 		s.ctx.Close()
 		s.ctx = nil
@@ -50,7 +49,7 @@ func (s *Server) loadModelLocked(path string, gpuDevice int) error {
 		s.modelPath = ""
 	}
 
-	ctx, err := whisper.New(path, gpuDevice, s.noGpu)
+	ctx, err := whisper.New(path, gpuDevice, noGpu)
 	if err != nil {
 		return err
 	}
@@ -85,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/models", s.handleModelUnload)
 	mux.HandleFunc("POST /v1/audio/transcriptions", s.handleTranscription)
 	mux.HandleFunc("GET /v1/models", s.handleModels)
+	mux.HandleFunc("GET /v1/devices", s.handleDevices)
 	s.registerDocsRoutes(mux)
 	return mux
 }
