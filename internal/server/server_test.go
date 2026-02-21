@@ -8,7 +8,7 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	s := New(false, false)
+	s := New(false)
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
 	s.handleHealth(w, req)
@@ -24,7 +24,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestReadyNoModel(t *testing.T) {
-	s := New(false, false)
+	s := New(false)
 	req := httptest.NewRequest("GET", "/ready", nil)
 	w := httptest.NewRecorder()
 	s.handleReady(w, req)
@@ -40,7 +40,7 @@ func TestReadyNoModel(t *testing.T) {
 }
 
 func TestModelsEmpty(t *testing.T) {
-	s := New(false, false)
+	s := New(false)
 	req := httptest.NewRequest("GET", "/v1/models", nil)
 	w := httptest.NewRecorder()
 	s.handleModels(w, req)
@@ -57,7 +57,7 @@ func TestModelsEmpty(t *testing.T) {
 }
 
 func TestTranscriptionNoModel(t *testing.T) {
-	s := New(false, false)
+	s := New(false)
 	req := httptest.NewRequest("POST", "/v1/audio/transcriptions", nil)
 	w := httptest.NewRecorder()
 	s.handleTranscription(w, req)
@@ -68,7 +68,7 @@ func TestTranscriptionNoModel(t *testing.T) {
 }
 
 func TestModelUnloadIdempotent(t *testing.T) {
-	s := New(false, false)
+	s := New(false)
 	req := httptest.NewRequest("DELETE", "/v1/models", nil)
 	w := httptest.NewRecorder()
 	s.handleModelUnload(w, req)
