@@ -98,7 +98,6 @@ See the full API reference here:
 
 - One transcription runs at a time per process  
   concurrent requests return 429
-- Maximum upload size is 1 GB
 - Non-WAV audio is automatically converted using ffmpeg
   - system ffmpeg or a bundled binary next to sona
 
