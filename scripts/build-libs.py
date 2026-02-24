@@ -59,6 +59,10 @@ def cmake_flags() -> list[str]:
     system = platform.system()
     if system == "Darwin":
         flags += ["-DGGML_METAL=ON", "-DGGML_METAL_EMBED_LIBRARY=ON"]
+
+        # Target macOS 12+ so Accelerate headers don't emit ILP64 BLAS symbols
+        # (_cblas_sgemm$NEWLAPACK$ILP64) that don't exist before macOS 13.3.
+        flags += ["-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"]
     elif system in ("Linux", "Windows"):
         flags += ["-DGGML_VULKAN=ON"]
     if system == "Windows":
