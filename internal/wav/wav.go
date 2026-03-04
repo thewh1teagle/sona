@@ -125,6 +125,9 @@ readData:
 	}
 
 	nSamples := int(dataSize) / int(channels) / 2
+	if nSamples == 0 {
+		return nil, fmt.Errorf("audio file contains no samples")
+	}
 	raw := make([]int16, int(dataSize)/2)
 	if err := binary.Read(r, binary.LittleEndian, raw); err != nil {
 		return nil, fmt.Errorf("failed to read PCM data: %w", err)

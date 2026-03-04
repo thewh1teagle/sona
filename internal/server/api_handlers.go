@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -50,7 +51,7 @@ func (s *Server) handleModelLoad(w http.ResponseWriter, r *http.Request) {
 		NoGpu     bool   `json:"no_gpu,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Path == "" {
-		writeError(w, http.StatusBadRequest, "request body must contain {\"path\": \"...\"}")
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidRequest, "request body must contain {\"path\": \"...\"}")
 		return
 	}
 
@@ -60,7 +61,7 @@ func (s *Server) handleModelLoad(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.LoadModel(body.Path, gpuDevice, body.NoGpu); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to load model: "+err.Error())
+		writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "failed to load model: "+err.Error())
 		return
 	}
 
@@ -83,13 +84,13 @@ func (s *Server) handleModelUnload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 	// Reject if busy (one job at a time).
 	if !s.mu.TryLock() {
-		writeError(w, http.StatusTooManyRequests, "server is busy with another transcription")
+		writeError(w, http.StatusTooManyRequests, ErrCodeBusy, "server is busy with another transcription")
 		return
 	}
 	defer s.mu.Unlock()
 
 	if s.ctx == nil {
-		writeError(w, http.StatusServiceUnavailable, "no model loaded")
+		writeError(w, http.StatusServiceUnavailable, ErrCodeNoModel, "no model loaded")
 		return
 	}
 
@@ -97,7 +98,7 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "missing or invalid 'file' field: "+err.Error())
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidRequest, "missing or invalid 'file' field: "+err.Error())
 		return
 	}
 	defer file.Close()
@@ -112,13 +113,13 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 	if diarizeModel != "" {
 		tmp, tmpErr := os.CreateTemp("", "sona-diar-*.audio")
 		if tmpErr != nil {
-			writeError(w, http.StatusInternalServerError, "failed to create temp file: "+tmpErr.Error())
+			writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "failed to create temp file: "+tmpErr.Error())
 			return
 		}
 		defer os.Remove(tmp.Name())
 		if _, copyErr := io.Copy(tmp, file); copyErr != nil {
 			tmp.Close()
-			writeError(w, http.StatusInternalServerError, "failed to buffer upload: "+copyErr.Error())
+			writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "failed to buffer upload: "+copyErr.Error())
 			return
 		}
 		tmp.Close()
@@ -127,7 +128,7 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		nativeWav := tmp.Name() + ".wav"
 		if convErr := audio.ConvertToNativeWav(tmp.Name(), nativeWav, false); convErr != nil {
 			log.Printf("failed to convert audio to native WAV: %v", convErr)
-			writeError(w, http.StatusBadRequest, "failed to convert audio for diarization: "+convErr.Error())
+			writeError(w, http.StatusBadRequest, ErrCodeInvalidAudio, "failed to convert audio for diarization: "+convErr.Error())
 			return
 		}
 		defer os.Remove(nativeWav)
@@ -136,7 +137,7 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		// Reopen converted file for audio decoding
 		reopened, reopenErr := os.Open(nativeWav)
 		if reopenErr != nil {
-			writeError(w, http.StatusInternalServerError, "failed to reopen converted file: "+reopenErr.Error())
+			writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "failed to reopen converted file: "+reopenErr.Error())
 			return
 		}
 		defer reopened.Close()
@@ -147,7 +148,11 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		EnhanceAudio: parseBoolFormValue(r.FormValue("enhance_audio")),
 	})
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid audio file: "+err.Error())
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidAudio, "invalid audio file: "+err.Error())
+		return
+	}
+	if len(samples) == 0 {
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidAudio, "audio file contains no samples")
 		return
 	}
 
@@ -211,14 +216,24 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 		aborted.Store(true)
 	}()
 
-	result, err := s.ctx.TranscribeStream(samples, opts, whisper.StreamCallbacks{
-		ShouldAbort: func() bool { return aborted.Load() },
-	})
-	if err != nil {
+	var result whisper.TranscribeResult
+	var transcribeErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				transcribeErr = fmt.Errorf("internal error: %v", r)
+				log.Printf("panic during transcription: %v", r)
+			}
+		}()
+		result, transcribeErr = s.ctx.TranscribeStream(samples, opts, whisper.StreamCallbacks{
+			ShouldAbort: func() bool { return aborted.Load() },
+		})
+	}()
+	if transcribeErr != nil {
 		if aborted.Load() {
 			return // client gone, nothing to write
 		}
-		writeError(w, http.StatusInternalServerError, "transcription failed: "+err.Error())
+		writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "transcription failed: "+transcribeErr.Error())
 		return
 	}
 
@@ -257,7 +272,7 @@ func (s *Server) handleTranscription(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleStreamingTranscription(w http.ResponseWriter, r *http.Request, samples []float32, opts whisper.TranscribeOptions, diarSegments []diarize.Segment) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		writeError(w, http.StatusInternalServerError, ErrCodeInternalError, "streaming not supported")
 		return
 	}
 
@@ -300,12 +315,22 @@ func (s *Server) handleStreamingTranscription(w http.ResponseWriter, r *http.Req
 		ShouldAbort: func() bool { return aborted.Load() },
 	}
 
-	result, err := s.ctx.TranscribeStream(samples, opts, cb)
-	if err != nil {
+	var result whisper.TranscribeResult
+	var transcribeErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				transcribeErr = fmt.Errorf("internal error: %v", r)
+				log.Printf("panic during streaming transcription: %v", r)
+			}
+		}()
+		result, transcribeErr = s.ctx.TranscribeStream(samples, opts, cb)
+	}()
+	if transcribeErr != nil {
 		if !aborted.Load() {
 			enc.Encode(map[string]any{
 				"type":    "error",
-				"message": err.Error(),
+				"message": transcribeErr.Error(),
 			})
 			flusher.Flush()
 		}

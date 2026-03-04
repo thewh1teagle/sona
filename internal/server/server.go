@@ -76,6 +76,18 @@ func (s *Server) Close() {
 	s.UnloadModel()
 }
 
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("panic recovered: %v", err)
+				writeError(w, http.StatusInternalServerError, ErrCodeInternalError, fmt.Sprintf("internal error: %v", err))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -85,7 +97,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/audio/transcriptions", s.handleTranscription)
 	mux.HandleFunc("GET /v1/models", s.handleModels)
 	s.registerDocsRoutes(mux)
-	return mux
+	return recoveryMiddleware(mux)
 }
 
 // ListenAndServe binds to the given port (0 = auto-assign), prints a ready
