@@ -36,6 +36,9 @@ func New(modelPath string, gpuDevice int, noGpu bool) (*Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("whisper: failed to read model file %s: %w", modelPath, err)
 	}
+	if len(buf) == 0 {
+		return nil, fmt.Errorf("whisper: model file is empty or corrupt: %s", modelPath)
+	}
 
 	params := C.whisper_context_default_params()
 	if noGpu || !VulkanAvailable() {
