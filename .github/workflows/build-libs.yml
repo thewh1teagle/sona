@@ -20,10 +20,10 @@ jobs:
       - name: Install Vulkan deps (Linux)
         if: runner.os == 'Linux'
         run: |
-          # glslc and libshaderc-dev are not in Ubuntu 22.04 standard repos; use LunarG SDK
+          # glslc/libshaderc-dev are not in Ubuntu 22.04 standard repos; install via LunarG Vulkan SDK
           wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
-          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
-          sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools glslc libshaderc-dev
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq vulkan-sdk glslang-tools
       - name: Install Vulkan deps (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
