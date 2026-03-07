@@ -19,7 +19,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install Vulkan deps (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools glslc libshaderc-dev
+        # Note: on ubuntu-22.04 use shaderc instead of glslc (glslc is not a standalone package on Jammy)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libvulkan-dev glslang-tools shaderc libshaderc-dev
       - name: Install Vulkan deps (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
