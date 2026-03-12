@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/thewh1teagle/sona/internal/audio"
 	"github.com/thewh1teagle/sona/internal/server"
 	"github.com/thewh1teagle/sona/internal/whisper"
+	"github.com/thewh1teagle/sona/parent"
 )
 
 type app struct {
@@ -98,12 +100,27 @@ func (a *app) newTranscribeCommand() *cobra.Command {
 func (a *app) newServeCommand() *cobra.Command {
 	var host string
 	var port int
+	var isparent bool
 
 	cmd := &cobra.Command{
 		Use:   "serve [model.bin]",
 		Short: "Start a transcription runner",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if isparent {
+				go func() {
+					for {
+						if parent.ParentExited() {
+							fmt.Println("Parent process exited")
+							os.Exit(0)
+						}
+
+						time.Sleep(1 * time.Second)
+					}
+				}()
+			}
+
 			audio.SetVerbose(a.verbose)
 			whisper.SetVerbose(a.verbose)
 
@@ -124,6 +141,7 @@ func (a *app) newServeCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind to")
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "port to listen on (0 = auto-assign)")
+	cmd.Flags().BoolVar(&isparent, "parent", false, "Parent monitoring")
 	return cmd
 }
 
