@@ -98,6 +98,7 @@ func (a *app) newTranscribeCommand() *cobra.Command {
 func (a *app) newServeCommand() *cobra.Command {
 	var host string
 	var port int
+	var exitWithParent bool
 
 	cmd := &cobra.Command{
 		Use:   "serve [model.bin]",
@@ -106,6 +107,10 @@ func (a *app) newServeCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			audio.SetVerbose(a.verbose)
 			whisper.SetVerbose(a.verbose)
+
+			if exitWithParent {
+				go watchParent()
+			}
 
 			s := server.New(a.verbose)
 			s.Version = version
@@ -124,6 +129,7 @@ func (a *app) newServeCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&host, "host", "127.0.0.1", "host to bind to")
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "port to listen on (0 = auto-assign)")
+	cmd.Flags().BoolVar(&exitWithParent, "exit-with-parent", true, "exit when the parent process exits")
 	return cmd
 }
 
