@@ -6,6 +6,7 @@ const WHISPER_REPO: &str = "ggml-org/whisper.cpp";
 const HEADERS: &[&str] = &[
     "include/whisper.h",
     "ggml/include/ggml.h",
+    "ggml/include/gguf.h",
     "ggml/include/ggml-cpu.h",
     "ggml/include/ggml-alloc.h",
     "ggml/include/ggml-backend.h",

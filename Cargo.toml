@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/diarize-rs",
+    "crates/parakeet-rs",
     "crates/sona",
     "crates/xtask",
     "crates/whisper-rs",

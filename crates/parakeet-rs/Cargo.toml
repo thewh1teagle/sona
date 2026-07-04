@@ -1,0 +1,25 @@
+[package]
+name = "parakeet-rs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rust Parakeet GGUF inference using Sona's ggml/gguf FFI"
+
+[dependencies]
+hound = "3.5"
+rustfft = "6.2"
+thiserror = "2.0"
+whisper-rs = { path = "../whisper-rs", features = ["ffi"] }
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+
+[[example]]
+name = "dump_mel"
+path = "examples/dump_mel.rs"
+
+[[example]]
+name = "dump_encoder"
+path = "examples/dump_encoder.rs"

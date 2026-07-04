@@ -15,7 +15,7 @@ mod devices;
     dead_code,
     improper_ctypes
 )]
-mod ffi;
+pub mod ffi;
 #[cfg(feature = "ffi")]
 mod platform;
 #[cfg(feature = "ffi")]

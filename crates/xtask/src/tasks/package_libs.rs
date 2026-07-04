@@ -20,10 +20,20 @@ pub(super) fn package(build_dir: &Path, src_dir: &Path, archive: &Path) -> Resul
         );
         std::fs::copy(lib, pkg.join("lib").join(name))?;
     }
-    std::fs::copy(
-        src_dir.join("include/whisper.h"),
-        pkg.join("include/whisper.h"),
-    )?;
+    for header in [
+        "include/whisper.h",
+        "ggml/include/ggml.h",
+        "ggml/include/gguf.h",
+        "ggml/include/ggml-cpu.h",
+        "ggml/include/ggml-alloc.h",
+        "ggml/include/ggml-backend.h",
+    ] {
+        let header_path = Path::new(header);
+        let name = header_path
+            .file_name()
+            .context("header path has no filename")?;
+        std::fs::copy(src_dir.join(header), pkg.join("include").join(name))?;
+    }
 
     let file = std::fs::File::create(archive)?;
     let encoder = GzEncoder::new(file, Compression::default());

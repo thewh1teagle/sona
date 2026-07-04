@@ -54,15 +54,35 @@ fn generate_bindings(include_dir: &Path) {
         "cargo:rerun-if-changed={}",
         include_dir.join("ggml-backend.h").display()
     );
+    println!(
+        "cargo:rerun-if-changed={}",
+        include_dir.join("ggml-alloc.h").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        include_dir.join("ggml-cpu.h").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        include_dir.join("ggml.h").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        include_dir.join("gguf.h").display()
+    );
 
     let mut builder = bindgen::Builder::default()
         .header(wrapper.to_string_lossy())
         .clang_arg(format!("-I{}", include_dir.display()))
         .allowlist_function("whisper_.*")
-        .allowlist_function("ggml_backend_dev_.*")
+        .allowlist_function("ggml_.*")
+        .allowlist_function("gguf_.*")
         .allowlist_type("whisper_.*")
         .allowlist_type("ggml_.*")
+        .allowlist_type("gguf_.*")
         .allowlist_var("WHISPER_SAMPLE_RATE")
+        .allowlist_var("GGML_.*")
+        .allowlist_var("GGUF_.*")
         .generate_comments(false)
         .derive_default(true);
 

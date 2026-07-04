@@ -529,7 +529,7 @@ dependencies = [
 name = "diarize-rs"
 version = "0.1.0"
 dependencies = [
- "parakeet-rs",
+ "parakeet-rs 0.3.6",
  "serde",
  "thiserror",
 ]
@@ -1473,6 +1473,16 @@ dependencies = [
  "hmac-sha256",
  "lzma-rust2",
  "ureq 3.3.0",
+]
+
+[[package]]
+name = "parakeet-rs"
+version = "0.1.0"
+dependencies = [
+ "hound",
+ "rustfft",
+ "thiserror",
+ "whisper-rs",
 ]
 
 [[package]]

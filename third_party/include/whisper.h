@@ -1,3 +1,7 @@
+// Fetched: 2026-07-04 22:31:07 UTC
+// Source: https://github.com/ggml-org/whisper.cpp/blob/aa1bc0d1a6dfd70dbb9f60c11df12441e03a9075/include/whisper.h
+// Commit: aa1bc0d1a6dfd70dbb9f60c11df12441e03a9075
+
 #ifndef WHISPER_H
 #define WHISPER_H
 

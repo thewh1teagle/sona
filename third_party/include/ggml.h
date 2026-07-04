@@ -1,4 +1,4 @@
-// Fetched: 2026-02-03 20:40:36 UTC
+// Fetched: 2026-07-04 22:31:07 UTC
 // Source: https://github.com/ggml-org/whisper.cpp/blob/aa1bc0d1a6dfd70dbb9f60c11df12441e03a9075/ggml/include/ggml.h
 // Commit: aa1bc0d1a6dfd70dbb9f60c11df12441e03a9075
 
