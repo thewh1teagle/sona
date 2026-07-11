@@ -27,6 +27,8 @@ enum Command {
     Transcribe {
         model: String,
         audio: String,
+        #[arg(long)]
+        vad_model: Option<String>,
         #[arg(short, long)]
         language: Option<String>,
         #[arg(long)]
@@ -104,6 +106,7 @@ pub async fn run() -> anyhow::Result<()> {
         Command::Transcribe {
             model,
             audio,
+            vad_model,
             language,
             detect_language,
             enhance_audio,
@@ -122,6 +125,7 @@ pub async fn run() -> anyhow::Result<()> {
                 TranscribeArgs {
                     model,
                     audio,
+                    vad_model,
                     language,
                     detect_language,
                     enhance_audio,
@@ -187,6 +191,7 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             max_segment_len: args.max_segment_len,
             best_of: args.best_of,
             beam_size: args.beam_size,
+            vad_model_path: args.vad_model,
             ..TranscribeOptions::default()
         },
     )?;
@@ -217,6 +222,7 @@ fn devices_command(config: AppConfig) -> anyhow::Result<()> {
 struct TranscribeArgs {
     model: String,
     audio: String,
+    vad_model: Option<String>,
     language: Option<String>,
     detect_language: bool,
     enhance_audio: bool,

@@ -32,6 +32,22 @@ pub struct Transcription {
     pub tokens: Vec<crate::Token>,
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct LongFormTranscription {
+    pub segments: Vec<Transcription>,
+}
+
+impl LongFormTranscription {
+    pub fn text(&self) -> String {
+        self.segments
+            .iter()
+            .map(|segment| segment.text.trim())
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
 /// Loaded GGUF metadata and tensor storage.
 ///
 /// The GGML context owns the mapped tensor data. It must outlive every tensor
@@ -144,7 +160,7 @@ impl Model {
             .ok_or_else(|| Error::UnsupportedLanguage(language.to_owned()))
     }
 
-    pub fn transcribe(&self, samples: &[f32], language: &str) -> Result<Transcription> {
+    fn transcribe_chunk(&self, samples: &[f32], language: &str) -> Result<Transcription> {
         let features = crate::MelFrontend::new(crate::MelConfig::default())?.compute(samples)?;
         let (encoded, shape) = self.encode(&features, self.prompt_id(language)?)?;
         let tokens = self.decode(&encoded, shape[1] as usize)?;
@@ -153,6 +169,44 @@ impl Model {
             text: self.tokenizer.decode_clean(&ids),
             tokens,
         })
+    }
+
+    pub fn transcribe(&self, vad: &mut vad_rs::Vad, samples: &[f32], language: &str) -> Result<LongFormTranscription> {
+        self.transcribe_with(vad, samples, language, || false, |_| {})
+    }
+
+    pub fn transcribe_with(
+        &self,
+        vad: &mut vad_rs::Vad,
+        samples: &[f32],
+        language: &str,
+        mut should_abort: impl FnMut() -> bool,
+        mut on_segment: impl FnMut(&Transcription),
+    ) -> Result<LongFormTranscription> {
+        let ranges = vad.segments(samples).map_err(|error| Error::Vad(error.to_string()))?;
+        let mut result = LongFormTranscription {
+            segments: Vec::with_capacity(ranges.len()),
+        };
+        let mut last_frame = None;
+        for range in ranges {
+            if should_abort() {
+                return Err(Error::Aborted);
+            }
+            let mut transcription = self.transcribe_chunk(&samples[range.start_sample..range.end_sample], language)?;
+            let frame_offset = range.start_sample / 1280;
+            for token in &mut transcription.tokens {
+                token.frame += frame_offset;
+            }
+            if let Some(frame) = last_frame {
+                transcription.tokens.retain(|token| token.frame > frame);
+                let ids = transcription.tokens.iter().map(|token| token.id).collect::<Vec<_>>();
+                transcription.text = self.tokenizer.decode_clean(&ids);
+            }
+            last_frame = transcription.tokens.last().map(|token| token.frame).or(last_frame);
+            on_segment(&transcription);
+            result.segments.push(transcription);
+        }
+        Ok(result)
     }
 
     pub fn encode_stem(&self, features: &MelFeatures) -> Result<(Vec<f32>, [i64; 3])> {

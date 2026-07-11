@@ -1330,6 +1330,7 @@ dependencies = [
  "rayon",
  "rustfft",
  "thiserror",
+ "vad-rs",
  "whisper-cpp-sys",
 ]
 
@@ -2112,6 +2113,7 @@ dependencies = [
  "utoipa",
  "utoipa-axum",
  "utoipa-swagger-ui",
+ "vad-rs",
  "whisper-rs",
 ]
 
@@ -2713,6 +2715,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vad-rs"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "whisper-cpp-sys",
+]
+
+[[package]]
 name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2884,6 +2894,7 @@ dependencies = [
  "hound",
  "libc",
  "thiserror",
+ "vad-rs",
  "whisper-cpp-sys",
  "windows-sys 0.61.2",
 ]

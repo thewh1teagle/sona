@@ -15,6 +15,7 @@ hound = { version = "3.5", optional = true }
 libc = "0.2"
 thiserror = "2.0"
 whisper-cpp-sys = { path = "../whisper-cpp-sys", optional = true }
+vad-rs = { path = "../vad-rs", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
@@ -24,7 +25,7 @@ windows-sys = { version = "0.61", features = [
 
 [features]
 default = []
-ffi = ["dep:whisper-cpp-sys"]
+ffi = ["dep:whisper-cpp-sys", "dep:vad-rs"]
 
 [[example]]
 name = "transcribe"

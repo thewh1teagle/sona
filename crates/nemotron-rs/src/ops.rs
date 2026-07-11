@@ -99,6 +99,7 @@ pub(crate) unsafe fn conv_2d_depthwise(
     sys::ggml_reshape_4d(ctx, out, (*cols).ne[1], (*cols).ne[2], (*data).ne[2], (*data).ne[3])
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) unsafe fn attention(
     ctx: Context,
     x: Tensor,
@@ -159,6 +160,7 @@ pub(crate) unsafe fn attention(
     sys::ggml_mul_mat(ctx, out_w, output)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) unsafe fn conv_module(
     ctx: Context,
     x: Tensor,

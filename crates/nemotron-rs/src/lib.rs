@@ -10,7 +10,7 @@ mod tokenizer;
 
 pub use decoder::Token;
 pub use mel::{MelConfig, MelFeatures, MelFrontend};
-pub use model::Transcription;
+pub use model::{LongFormTranscription, Transcription};
 pub use model::{Model, ModelInfo};
 pub use tokenizer::Tokenizer;
 pub use whisper_cpp_sys as sys;
@@ -35,6 +35,10 @@ pub enum Error {
     UnsupportedLanguage(String),
     #[error("GGML operation failed: {0}")]
     Ggml(&'static str),
+    #[error("VAD failed: {0}")]
+    Vad(String),
+    #[error("transcription aborted")]
+    Aborted,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
