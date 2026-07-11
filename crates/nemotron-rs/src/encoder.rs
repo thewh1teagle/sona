@@ -64,7 +64,15 @@ pub(crate) unsafe fn build_pre_encode(ctx: Context, model: &Model, mel: Tensor) 
     sys::ggml_add(ctx, x, bias)
 }
 
-unsafe fn block(ctx: Context, model: &Model, mut x: Tensor, pos: Tensor, mask: Tensor, layer: i32) -> Tensor {
+unsafe fn block(
+    ctx: Context,
+    model: &Model,
+    mut x: Tensor,
+    pos: Tensor,
+    mask: Tensor,
+    layer: i32,
+    promote_pointwise: bool,
+) -> Tensor {
     let n = |suffix: &str| format!("enc.blocks.{layer}.{suffix}");
     let w = |suffix: &str| weight(model, &n(suffix));
     let null = std::ptr::null_mut();
@@ -106,6 +114,7 @@ unsafe fn block(ctx: Context, model: &Model, mut x: Tensor, pos: Tensor, mask: T
         w("conv.pointwise2.weight"),
         model.info().encoder_dimension as i64,
         9,
+        promote_pointwise,
     );
     x = sys::ggml_add(ctx, x, conv);
     x = macaron(
@@ -128,14 +137,19 @@ pub(crate) struct EncoderBuild {
     pub prompt: Tensor,
 }
 
-pub(crate) unsafe fn build_encoder(ctx: Context, model: &Model, mel: Tensor) -> EncoderBuild {
+pub(crate) unsafe fn build_encoder(
+    ctx: Context,
+    model: &Model,
+    mel: Tensor,
+    promote_pointwise: bool,
+) -> EncoderBuild {
     let mut x = build_pre_encode(ctx, model, mel);
     let time = (*x).ne[1];
     let dimension = model.info().encoder_dimension as i64;
     let position = sys::ggml_new_tensor_2d(ctx, sys::ggml_type_GGML_TYPE_F32, dimension, 2 * time - 1);
     let mask = sys::ggml_new_tensor_4d(ctx, sys::ggml_type_GGML_TYPE_F32, time, time, 1, 1);
     for layer in 0..model.info().encoder_layers {
-        x = block(ctx, model, x, position, mask, layer);
+        x = block(ctx, model, x, position, mask, layer, promote_pointwise);
     }
     let prompts = model.info().prompt_count as i64;
     let prompt = sys::ggml_new_tensor_4d(ctx, sys::ggml_type_GGML_TYPE_F32, prompts, time, 1, 1);

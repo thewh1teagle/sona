@@ -196,7 +196,7 @@ impl Model {
                 1,
                 1,
             );
-            let built = build_encoder(graph.ctx, self, input);
+            let built = build_encoder(graph.ctx, self, input, self.device.is_none());
             graph.output(built.output);
             let time = (*built.output).ne[1] as usize;
             let positions = positional_embedding(self.info.encoder_dimension as usize, time);
@@ -333,6 +333,9 @@ impl Model {
 
 impl DeviceWeights {
     unsafe fn load(source: *mut sys::ggml_context) -> Result<Option<Self>> {
+        if std::env::var_os("NEMOTRON_CPU").is_some() {
+            return Ok(None);
+        }
         let backend = sys::ggml_backend_init_by_type(sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_GPU, ptr::null());
         if backend.is_null() {
             return Ok(None);

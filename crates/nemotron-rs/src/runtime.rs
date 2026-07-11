@@ -11,10 +11,15 @@ pub(crate) struct CpuRuntime {
 
 impl CpuRuntime {
     pub fn new() -> Result<Self> {
+        Self::with_threads(4)
+    }
+
+    fn with_threads(threads: usize) -> Result<Self> {
         let backend = unsafe { sys::ggml_backend_cpu_init() };
         if backend.is_null() {
             Err(Error::Ggml("ggml_backend_cpu_init"))
         } else {
+            unsafe { sys::ggml_backend_cpu_set_n_threads(backend, threads.min(i32::MAX as usize) as i32) };
             Ok(Self {
                 backend,
                 owned: true,
@@ -75,7 +80,18 @@ pub(crate) fn accelerated_runtime(backend: Option<sys::ggml_backend_t>) -> Resul
             scheduler: ptr::null_mut(),
             scheduler_cpu: ptr::null_mut(),
         }),
-        None => CpuRuntime::new(),
+        None => CpuRuntime::with_threads(
+            std::env::var("NEMOTRON_THREADS")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .filter(|threads| *threads > 0)
+                .unwrap_or_else(|| {
+                    std::thread::available_parallelism()
+                        .map(|count| count.get())
+                        .map(|threads| (threads * 4 / 5).max(1))
+                        .unwrap_or(4)
+                }),
+        ),
     }
 }
 

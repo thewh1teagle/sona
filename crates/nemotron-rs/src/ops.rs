@@ -169,9 +169,20 @@ pub(crate) unsafe fn conv_module(
     pw2_w: Tensor,
     d_model: i64,
     kernel: i64,
+    promote_pointwise: bool,
 ) -> Tensor {
     let time = (*x).ne[1];
     let batch = (*x).ne[2];
+    let pw1_w = if promote_pointwise {
+        sys::ggml_cast(ctx, pw1_w, sys::ggml_type_GGML_TYPE_F32)
+    } else {
+        pw1_w
+    };
+    let pw2_w = if promote_pointwise {
+        sys::ggml_cast(ctx, pw2_w, sys::ggml_type_GGML_TYPE_F32)
+    } else {
+        pw2_w
+    };
     let pw1 = sys::ggml_reshape_2d(ctx, pw1_w, d_model, 2 * d_model);
     let mut y = sys::ggml_mul_mat(ctx, pw1, x);
     let gate = sys::ggml_view_3d(ctx, y, d_model, time, batch, (*y).nb[1], (*y).nb[2], 0);
