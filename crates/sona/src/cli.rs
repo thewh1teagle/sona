@@ -1,5 +1,6 @@
+use crate::engine::Engine;
 use clap::{Parser, Subcommand};
-use whisper_rs::{Context, ContextOptions, TranscribeOptions};
+use whisper_rs::{ContextOptions, TranscribeOptions};
 
 use crate::{audio, pull, server};
 
@@ -164,7 +165,7 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             verbose: config.verbose(),
         },
     )?;
-    let mut ctx = Context::new(
+    let mut ctx = Engine::load(
         &args.model,
         ContextOptions {
             gpu_device: args.gpu_device,
@@ -243,4 +244,3 @@ fn watch_parent() {
         });
     }
 }
-
