@@ -11,7 +11,13 @@ name = "diarize_rs"
 path = "src/lib.rs"
 
 [dependencies]
-parakeet-rs = { version = "0.3.2", features = ["sortformer"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
+
+# The DirectML execution provider is Windows-only; other platforms stay on CPU.
+[target.'cfg(windows)'.dependencies]
+parakeet-rs = { version = "0.3.6", features = ["sortformer", "directml"] }
+
+[target.'cfg(not(windows))'.dependencies]
+parakeet-rs = { version = "0.3.6", features = ["sortformer"] }
 
