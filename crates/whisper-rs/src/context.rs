@@ -1,12 +1,12 @@
-use std::ffi::{CStr, CString, c_void};
+use std::ffi::{c_void, CStr, CString};
 use std::path::{Path, PathBuf};
 use std::ptr;
 
-use crate::callbacks::{CallbackState, install_stream_callbacks};
+use crate::callbacks::{install_stream_callbacks, CallbackState};
+use crate::{ffi, platform};
 use crate::{
     ContextOptions, Error, Result, Segment, StreamCallbacks, TranscribeOptions, TranscribeResult,
 };
-use crate::{ffi, platform};
 
 #[derive(Debug)]
 pub struct Context {
@@ -145,8 +145,15 @@ pub(crate) fn full_params(options: &TranscribeOptions) -> ffi::whisper_full_para
     params.print_timestamps = options.verbose;
     params.detect_language = options.detect_language;
     params.translate = options.translate;
-    params.token_timestamps = options.word_timestamps;
-
+    if options.word_timestamps {
+        params.token_timestamps = true;
+        params.split_on_word = true;
+        params.max_len = if options.max_segment_len > 0 {
+            options.max_segment_len
+        } else {
+            1
+        };
+    }
     if options.threads > 0 {
         params.n_threads = options.threads;
     }

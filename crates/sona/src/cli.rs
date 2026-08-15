@@ -163,6 +163,21 @@ pub async fn run() -> anyhow::Result<()> {
     }
 }
 
+fn format_timestamp(timestamp: i64) -> String {
+    // whisper.cpp timestamps are in 10 ms units.
+    let total_ms = timestamp * 10;
+
+    let hours = total_ms / 3_600_000;
+    let minutes = (total_ms % 3_600_000) / 60_000;
+    let seconds = (total_ms % 60_000) / 1_000;
+    let milliseconds = total_ms % 1_000;
+
+    format!(
+        "{:02}:{:02}:{:02}.{:03}",
+        hours, minutes, seconds, milliseconds
+    )
+}
+
 async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::Result<()> {
     whisper_rs::set_verbose(config.verbose());
     let samples = audio::read_file_with_options(
@@ -179,6 +194,9 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             no_gpu: false,
         },
     )?;
+
+    let word_timestamps = args.word_timestamps;
+
     let result = ctx.transcribe(
         &samples,
         TranscribeOptions {
@@ -198,7 +216,48 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             ..TranscribeOptions::default()
         },
     )?;
-    println!("{}", result.text());
+
+    if word_timestamps {
+        let mut sentence = String::new();
+        let mut sentence_start: Option<i64> = None;
+        let mut sentence_end: i64 = 0;
+
+        for segment in &result.segments {
+            if sentence_start.is_none() {
+                sentence_start = Some(segment.start);
+            }
+
+            sentence.push_str(&segment.text);
+            sentence_end = segment.end;
+
+            let text = segment.text.trim_end();
+
+            if text.ends_with('.') || text.ends_with('!') || text.ends_with('?') {
+                println!(
+                    "[{} --> {}] {}",
+                    format_timestamp(sentence_start.unwrap()),
+                    format_timestamp(sentence_end),
+                    sentence.trim()
+                );
+
+                sentence.clear();
+                sentence_start = None;
+            }
+        }
+
+        // Print remaining text if the last sentence has no final punctuation.
+        if !sentence.trim().is_empty() {
+            println!(
+                "[{} --> {}] {}",
+                format_timestamp(sentence_start.unwrap()),
+                format_timestamp(sentence_end),
+                sentence.trim()
+            );
+        }
+    } else {
+        println!("{}", result.text());
+    }
+
     Ok(())
 }
 
