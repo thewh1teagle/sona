@@ -1,7 +1,8 @@
 use crate::engine::Engine;
 use clap::{Parser, Subcommand};
-use whisper_rs::{ContextOptions, TranscribeOptions};
+use whisper_rs::{ContextOptions, Segment, TranscribeOptions};
 
+use crate::server::format;
 use crate::{audio, pull, server};
 
 const VERSION: &str = match option_env!("SONA_VERSION") {
@@ -163,19 +164,28 @@ pub async fn run() -> anyhow::Result<()> {
     }
 }
 
-fn format_timestamp(timestamp: i64) -> String {
-    // whisper.cpp timestamps are in 10 ms units.
-    let total_ms = timestamp * 10;
+/// `--word-timestamps` makes whisper.cpp emit one segment per word, which is too
+/// granular to read. Regroup them back into sentences.
+fn sentences(segments: &[Segment]) -> Vec<Segment> {
+    let mut sentences = Vec::new();
+    let mut current: Option<Segment> = None;
 
-    let hours = total_ms / 3_600_000;
-    let minutes = (total_ms % 3_600_000) / 60_000;
-    let seconds = (total_ms % 60_000) / 1_000;
-    let milliseconds = total_ms % 1_000;
+    for segment in segments {
+        let sentence = current.get_or_insert_with(|| Segment {
+            start: segment.start,
+            ..Segment::default()
+        });
+        sentence.text.push_str(&segment.text);
+        sentence.end = segment.end;
 
-    format!(
-        "{:02}:{:02}:{:02}.{:03}",
-        hours, minutes, seconds, milliseconds
-    )
+        if sentence.text.trim_end().ends_with(['.', '!', '?']) {
+            sentences.push(current.take().expect("just inserted"));
+        }
+    }
+
+    // A transcript that does not end on punctuation still has a trailing sentence.
+    sentences.extend(current.filter(|sentence| !sentence.text.trim().is_empty()));
+    sentences
 }
 
 async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::Result<()> {
@@ -193,10 +203,8 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             gpu_device: args.gpu_device,
             no_gpu: false,
         },
-    )?;
-
-    let word_timestamps = args.word_timestamps;
-
+    )
+    .inspect_err(|err| tracing::error!(model = args.model, "failed to load model: {err:#}"))?;
     let result = ctx.transcribe(
         &samples,
         TranscribeOptions {
@@ -215,49 +223,21 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             vad_model_path: args.vad_model,
             ..TranscribeOptions::default()
         },
-    )?;
+    )
+    .inspect_err(|err| tracing::error!("transcription failed: {err:#}"))?;
 
-    if word_timestamps {
-        let mut sentence = String::new();
-        let mut sentence_start: Option<i64> = None;
-        let mut sentence_end: i64 = 0;
-
-        for segment in &result.segments {
-            if sentence_start.is_none() {
-                sentence_start = Some(segment.start);
-            }
-
-            sentence.push_str(&segment.text);
-            sentence_end = segment.end;
-
-            let text = segment.text.trim_end();
-
-            if text.ends_with('.') || text.ends_with('!') || text.ends_with('?') {
-                println!(
-                    "[{} --> {}] {}",
-                    format_timestamp(sentence_start.unwrap()),
-                    format_timestamp(sentence_end),
-                    sentence.trim()
-                );
-
-                sentence.clear();
-                sentence_start = None;
-            }
-        }
-
-        // Print remaining text if the last sentence has no final punctuation.
-        if !sentence.trim().is_empty() {
+    if args.word_timestamps {
+        for sentence in sentences(&result.segments) {
             println!(
                 "[{} --> {}] {}",
-                format_timestamp(sentence_start.unwrap()),
-                format_timestamp(sentence_end),
-                sentence.trim()
+                format::cs_to_vtt_time(sentence.start),
+                format::cs_to_vtt_time(sentence.end),
+                sentence.text.trim()
             );
         }
     } else {
         println!("{}", result.text());
     }
-
     Ok(())
 }
 
@@ -298,4 +278,65 @@ struct TranscribeArgs {
     best_of: i32,
     beam_size: i32,
     gpu_device: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn segment(start: i64, end: i64, text: &str) -> Segment {
+        Segment {
+            start,
+            end,
+            text: text.to_string(),
+            ..Segment::default()
+        }
+    }
+
+    fn grouped(segments: &[Segment]) -> Vec<(i64, i64, String)> {
+        sentences(segments)
+            .into_iter()
+            .map(|sentence| (sentence.start, sentence.end, sentence.text.trim().to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn splits_on_sentence_ending_punctuation() {
+        let segments = [
+            segment(0, 10, " Hello"),
+            segment(10, 20, " there."),
+            segment(20, 30, " Again"),
+            segment(30, 40, " now!"),
+        ];
+        assert_eq!(
+            grouped(&segments),
+            [
+                (0, 20, "Hello there.".to_string()),
+                (20, 40, "Again now!".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn keeps_a_trailing_sentence_without_punctuation() {
+        let segments = [segment(0, 10, " Done."), segment(10, 20, " and more")];
+        assert_eq!(
+            grouped(&segments),
+            [
+                (0, 10, "Done.".to_string()),
+                (10, 20, "and more".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn ignores_trailing_whitespace_only_segments() {
+        let segments = [segment(0, 10, " Done."), segment(10, 20, "  ")];
+        assert_eq!(grouped(&segments), [(0, 10, "Done.".to_string())]);
+    }
+
+    #[test]
+    fn handles_no_segments() {
+        assert!(grouped(&[]).is_empty());
+    }
 }
