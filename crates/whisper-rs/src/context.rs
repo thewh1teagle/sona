@@ -151,13 +151,10 @@ pub(crate) fn full_params(options: &TranscribeOptions) -> ffi::whisper_full_para
     params.detect_language = options.detect_language;
     params.translate = options.translate;
     params.token_timestamps = options.word_timestamps;
-    // Token timestamps on their own still emit sentence-sized segments. Splitting on
-    // word boundaries is what makes the timings usable; an explicit max_segment_len
-    // below overrides the one-word default.
-    if options.word_timestamps {
-        params.split_on_word = true;
-        params.max_len = 1;
-    }
+    // whisper.cpp only wraps segments when max_len is set, so split_on_word is inert
+    // on its own. Callers that want word-sized segments ask for them with
+    // max_segment_len; this just makes the wrap land on word boundaries.
+    params.split_on_word = options.word_timestamps;
 
     if options.threads > 0 {
         params.n_threads = options.threads;

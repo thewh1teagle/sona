@@ -193,7 +193,13 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
             temperature: args.temperature,
             max_text_ctx: args.max_text_ctx,
             word_timestamps: args.word_timestamps,
-            max_segment_len: args.max_segment_len,
+            // One word per segment is what --word-timestamps is asking for, unless
+            // the caller picked a length themselves.
+            max_segment_len: if args.word_timestamps && args.max_segment_len == 0 {
+                1
+            } else {
+                args.max_segment_len
+            },
             best_of: args.best_of,
             beam_size: args.beam_size,
             vad_model_path: args.vad_model,
