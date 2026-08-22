@@ -1,6 +1,6 @@
 use crate::engine::Engine;
 use clap::{Parser, Subcommand};
-use whisper_rs::{ContextOptions, Segment, TranscribeOptions};
+use whisper_rs::{ContextOptions, TranscribeOptions};
 
 use crate::server::format;
 use crate::{audio, pull, server};
@@ -164,30 +164,6 @@ pub async fn run() -> anyhow::Result<()> {
     }
 }
 
-/// `--word-timestamps` makes whisper.cpp emit one segment per word, which is too
-/// granular to read. Regroup them back into sentences.
-fn sentences(segments: &[Segment]) -> Vec<Segment> {
-    let mut sentences = Vec::new();
-    let mut current: Option<Segment> = None;
-
-    for segment in segments {
-        let sentence = current.get_or_insert_with(|| Segment {
-            start: segment.start,
-            ..Segment::default()
-        });
-        sentence.text.push_str(&segment.text);
-        sentence.end = segment.end;
-
-        if sentence.text.trim_end().ends_with(['.', '!', '?']) {
-            sentences.push(current.take().expect("just inserted"));
-        }
-    }
-
-    // A transcript that does not end on punctuation still has a trailing sentence.
-    sentences.extend(current.filter(|sentence| !sentence.text.trim().is_empty()));
-    sentences
-}
-
 async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::Result<()> {
     whisper_rs::set_verbose(config.verbose());
     let samples = audio::read_file_with_options(
@@ -227,12 +203,15 @@ async fn transcribe_command(args: TranscribeArgs, config: AppConfig) -> anyhow::
     .inspect_err(|err| tracing::error!("transcription failed: {err:#}"))?;
 
     if args.word_timestamps {
-        for sentence in sentences(&result.segments) {
+        // whisper.cpp emits one segment per word here, plus a leading empty one for
+        // the silence before speech starts.
+        let words = result.segments.iter().filter(|segment| !segment.text.trim().is_empty());
+        for word in words {
             println!(
                 "[{} --> {}] {}",
-                format::cs_to_vtt_time(sentence.start),
-                format::cs_to_vtt_time(sentence.end),
-                sentence.text.trim()
+                format::cs_to_vtt_time(word.start),
+                format::cs_to_vtt_time(word.end),
+                word.text.trim()
             );
         }
     } else {
@@ -278,65 +257,4 @@ struct TranscribeArgs {
     best_of: i32,
     beam_size: i32,
     gpu_device: i32,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn segment(start: i64, end: i64, text: &str) -> Segment {
-        Segment {
-            start,
-            end,
-            text: text.to_string(),
-            ..Segment::default()
-        }
-    }
-
-    fn grouped(segments: &[Segment]) -> Vec<(i64, i64, String)> {
-        sentences(segments)
-            .into_iter()
-            .map(|sentence| (sentence.start, sentence.end, sentence.text.trim().to_string()))
-            .collect()
-    }
-
-    #[test]
-    fn splits_on_sentence_ending_punctuation() {
-        let segments = [
-            segment(0, 10, " Hello"),
-            segment(10, 20, " there."),
-            segment(20, 30, " Again"),
-            segment(30, 40, " now!"),
-        ];
-        assert_eq!(
-            grouped(&segments),
-            [
-                (0, 20, "Hello there.".to_string()),
-                (20, 40, "Again now!".to_string()),
-            ]
-        );
-    }
-
-    #[test]
-    fn keeps_a_trailing_sentence_without_punctuation() {
-        let segments = [segment(0, 10, " Done."), segment(10, 20, " and more")];
-        assert_eq!(
-            grouped(&segments),
-            [
-                (0, 10, "Done.".to_string()),
-                (10, 20, "and more".to_string()),
-            ]
-        );
-    }
-
-    #[test]
-    fn ignores_trailing_whitespace_only_segments() {
-        let segments = [segment(0, 10, " Done."), segment(10, 20, "  ")];
-        assert_eq!(grouped(&segments), [(0, 10, "Done.".to_string())]);
-    }
-
-    #[test]
-    fn handles_no_segments() {
-        assert!(grouped(&[]).is_empty());
-    }
 }

@@ -56,7 +56,7 @@ pub use devices::{list_gpu_devices, GPUDevice, GPUDeviceType};
 #[cfg(not(feature = "ffi"))]
 pub use stub::{list_gpu_devices, set_verbose, Context, GPUDevice, GPUDeviceType};
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Segment {
     pub start: i64,
     pub end: i64,
