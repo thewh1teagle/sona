@@ -1,3 +1,11 @@
+# Sona has moved
+
+The engine now lives in the Vibe repository as [`server/`](https://github.com/thewh1teagle/vibe/tree/main/server), with its history, and ships as `vibe-server`. Releases continue there under `server-v*` tags; the ggml library bundles under `libraries-ggml-*`. Issues and pull requests go to [thewh1teagle/vibe](https://github.com/thewh1teagle/vibe).
+
+This repository is archived. Its last release is v0.6.5, and existing download links keep working.
+
+---
+
 # Sona 🎧
 
 Sona is a local transcription runner built on top of ggml.cpp.
